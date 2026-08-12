@@ -107,6 +107,20 @@ const docTracks = [
     ],
   },
   {
+    id: "debug",
+    label: "Debug closely",
+    eyebrow: "Mechanism tracing",
+    title: "Observe one boundary at a time.",
+    items: [
+      { title: "Debug facilities lab", source: "TT-Metal docs", tag: "Workflow", description: "Host GDB, kernel DPRINT, hang diagnosis and profiling in one guided Metalium lab.", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/labs/matmul/lab1/lab1.html" },
+      { title: "Device Debug Print", source: "TT-Metal tools", tag: "Kernel", description: "Filter one logical core and RISC, then print variables, addresses and circular-buffer data.", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html" },
+      { title: "Debug Checkpoints", source: "TT-Metal tools", tag: "Pipeline", description: "Synchronize active RISCs and inspect a consistent snapshot of CB pointers, L1 and destination data.", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/checkpoint.html" },
+      { title: "Watcher", source: "TT-Metal tools", tag: "Hangs", description: "Waypoints, assertions, NoC sanitization and per-RISC state for locating a stalled mechanism.", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/watcher.html" },
+      { title: "NOC Debug Dump", source: "TT-Metal tools", tag: "Ordering", description: "Experimental transaction tracing for issues such as a missing asynchronous write barrier.", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/noc_debug_dump.html" },
+      { title: "ttsim error handling", source: "ttsim docs", tag: "Failures", description: "Interpret strict simulator exits and isolate experiments so one failure does not stop the full test run.", url: "https://github.com/tenstorrent/ttsim/blob/main/docs/sim_error_handling.md" },
+    ],
+  },
+  {
     id: "internals",
     label: "Go deeper",
     eyebrow: "Simulator internals",
@@ -119,6 +133,75 @@ const docTracks = [
       { title: "Wormhole and Blackhole ISA", source: "tt-isa-documentation", tag: "Low level", description: "Architecture-specific instruction references; never assume the two instruction sets are identical.", url: "https://github.com/tenstorrent/tt-isa-documentation" },
       { title: "ttsim QEMU Bridge", source: "Tenstorrent Lessons", tag: "Advanced", description: "Add the kernel-driver boundary after the shared-library workflow is familiar.", url: "https://docs.tenstorrent.com/tt-vscode-toolkit/lessons/ttsim-qemu-bridge/" },
     ],
+  },
+] as const;
+
+const debugLayers = [
+  {
+    number: "01",
+    title: "Host creates the experiment",
+    processor: "Host C++ · before dispatch",
+    tool: "GDB + Inspector",
+    question: "Were buffers, kernels, core ranges and runtime arguments assembled correctly?",
+    observe: "Step through host-side program construction and enqueue calls. Inspector records host-runtime facts that can remain available after the process exits.",
+    lookFor: "Wrong buffer sizes, stale compile-time arguments, incorrect core selection, or a missing synchronization call on the host.",
+    command: "./build_metal.sh --build-type Debug\ngdb --args ./build/programming_examples/metal_example_eltwise_binary",
+    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/labs/matmul/lab1/lab1.html",
+  },
+  {
+    number: "02",
+    title: "Reader moves input",
+    processor: "BRISC / NCRISC · data movement",
+    tool: "DPRINT one RISC",
+    question: "Did the data-movement kernel receive the right addresses and move the expected number of bytes?",
+    observe: "Select one logical core and one RISC. Print runtime arguments, NoC addresses, transfer sizes and phase markers around reserve, transfer, barrier and push calls.",
+    lookFor: "A bad address, wrong byte count, missing NoC barrier, or circular-buffer production that never becomes visible to compute.",
+    command: "export TT_METAL_DPRINT_CORES=0,0\nexport TT_METAL_DPRINT_RISCVS=BR\nexport TT_METAL_DPRINT_ONE_FILE_PER_RISC=1\n./build/programming_examples/metal_example_eltwise_binary",
+    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html",
+  },
+  {
+    number: "03",
+    title: "Circular buffer hands data across",
+    processor: "CB + L1 · pipeline boundary",
+    tool: "Checkpoint + dump",
+    question: "Do producer and consumer RISCs agree on read pointers, write pointers and tile counts at the same instant?",
+    observe: "Place the same named checkpoint in every active kernel on the core. The barrier stops all participating RISCs, then reports CB metadata before allowing them to continue.",
+    lookFor: "A write pointer that did not advance, a read pointer that advanced too early, or mismatched tiles received and acknowledged.",
+    command: "export TT_METAL_CHECKPOINT=1\nexport TT_METAL_DPRINT_CORES=0,0\nrm -rf ~/.cache/tt-metal-cache\n# Add DEBUG_CHECKPOINT(\"after_read\") to every active kernel.",
+    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/checkpoint.html",
+  },
+  {
+    number: "04",
+    title: "Unpack, math and pack transform it",
+    processor: "TRISC0 → TRISC1 → TRISC2",
+    tool: "DPRINT by compute role",
+    question: "At which compute stage does the first incorrect value appear?",
+    observe: "Run three separate instrumented passes: TR0 for unpack, TR1 for math and TR2 for pack. Compare a tiny slice rather than printing a full tile.",
+    lookFor: "The last correct stage. That boundary narrows the bug to data format/unpack, the math operation, or packing/output layout.",
+    command: "export TT_METAL_DPRINT_CORES=0,0\nexport TT_METAL_DPRINT_RISCVS=TR0  # repeat with TR1, then TR2\n./build/programming_examples/metal_example_eltwise_binary",
+    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html",
+  },
+  {
+    number: "05",
+    title: "NoC ordering either completes or hangs",
+    processor: "NoC + barriers · synchronization",
+    tool: "Simulator errors → Watcher",
+    question: "Is a RISC waiting for data that was never published, or issuing an invalid transaction?",
+    observe: "Start with ttsim’s strict error and DPRINT trail. If supported by the current TT-Metal/ttsim pair, use Watcher waypoints or a separate NOC Debug Dump run.",
+    lookFor: "Missing read/write barriers, invalid coordinates, circular-buffer overflow, or two RISCs waiting on each other.",
+    command: "unset TT_METAL_DPRINT_CORES TT_METAL_DEVICE_PROFILER\nexport TT_METAL_WATCHER=120\n./build/programming_examples/metal_example_eltwise_binary\n# Run NOC Debug Dump separately; do not combine the tools.",
+    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/watcher.html",
+  },
+  {
+    number: "06",
+    title: "Timeline explains the sequence",
+    processor: "Host + device scopes · chronology",
+    tool: "Device Profiler / Tracy",
+    question: "Which mechanism began, waited and completed—and in what order?",
+    observe: "Add a small number of named device zones and view their chronology beside host scopes. Disable DPRINT, Watcher and NoC dump first because the tools compete for kernel resources.",
+    lookFor: "Unexpected gaps, repeated launches, or scope ordering. Never interpret ttsim wall time or cycle timing as silicon performance.",
+    command: "unset TT_METAL_DPRINT_CORES TT_METAL_WATCHER TT_METAL_NOC_DEBUG_DUMP\nTT_METAL_DEVICE_PROFILER=1 ./build/programming_examples/metal_example_eltwise_binary",
+    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_program_profiler.html",
   },
 ] as const;
 
@@ -147,6 +230,7 @@ function App() {
     try { return JSON.parse(localStorage.getItem("ttsim-progress") ?? "{}"); } catch { return {}; }
   });
   const [activeLab, setActiveLab] = useState(0);
+  const [activeDebugLayer, setActiveDebugLayer] = useState(0);
   const [activeDocTrack, setActiveDocTrack] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => document.documentElement.dataset.theme === "light" ? "light" : "dark");
@@ -165,6 +249,7 @@ function App() {
   }
 
   const lab = labs[activeLab];
+  const debugLayer = debugLayers[activeDebugLayer];
   const docTrack = docTracks[activeDocTrack];
   return (
     <div className="site-shell">
@@ -172,7 +257,7 @@ function App() {
         <a className="brand" href="#top" aria-label="TT Sim Lab home"><span>TT</span><i>•</i>SIM LAB</a>
         <button className="menu-button" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}>Index</button>
         <nav className={menuOpen ? "topnav open" : "topnav"} aria-label="Primary">
-          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#experiments">Experiments</a><a href="#docs">Docs</a>
+          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#experiments">Experiments</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
           <button className="theme-toggle" type="button" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} aria-pressed={theme === "light"} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><span aria-hidden="true">◐</span><small>{theme === "dark" ? "Light" : "Dark"}</small></button>
           <a className="repo-link" href="https://github.com/buicongnguyen/buicongnguyen.github.io/tree/main/tt-sim">GitHub ↗</a>
         </nav>
@@ -250,14 +335,30 @@ function App() {
           </div>
         </section>
 
+        <section id="debug" className="content-section debug-section">
+          <div className="section-heading"><span>04 / Mechanism debugger</span><h2>Follow one value through the machine.</h2><p>Start at the host and move down only after the current boundary is correct. Each pass instruments one mechanism, one core and one RISC role.</p></div>
+          <div className="debug-guardrails"><div><span>01</span><p><b>Baseline first.</b> Save one uninstrumented passing or failing run before adding any tool.</p></div><div><span>02</span><p><b>One observer.</b> DPRINT, Watcher, Device Profiler and NoC dump must not be combined.</p></div><div><span>03</span><p><b>Sequence, not speed.</b> Instrumentation changes the kernel; ttsim timing is not silicon timing.</p></div></div>
+          <div className="debug-layout">
+            <div className="debug-tabs" role="tablist" aria-label="Debugging mechanisms">{debugLayers.map((item, index) => <button key={item.number} type="button" role="tab" aria-selected={activeDebugLayer === index} className={activeDebugLayer === index ? "active" : ""} onClick={() => setActiveDebugLayer(index)}><span>{item.number}</span><div><strong>{item.title}</strong><small>{item.processor}</small></div></button>)}</div>
+            <article className="debug-panel" role="tabpanel">
+              <div className="debug-title"><span>{debugLayer.number}</span><div><p className="eyebrow">{debugLayer.tool}</p><h3>{debugLayer.title}</h3><small>{debugLayer.processor}</small></div></div>
+              <p className="debug-question">{debugLayer.question}</p>
+              <div className="debug-evidence"><div><small>Observe</small><p>{debugLayer.observe}</p></div><div><small>Look for</small><p>{debugLayer.lookFor}</p></div></div>
+              <Command code={debugLayer.command} label="Focused debug pass" />
+              <a className="debug-source" href={debugLayer.source}>Open the official documentation for this mechanism ↗</a>
+            </article>
+          </div>
+          <div className="debug-playbook"><p><b>Important ttsim boundary:</b> use GDB for the host process. Device kernels are not ordinary host threads; follow them with DPRINT, checkpoints, asserts and state dumps. Support for hardware-oriented tools such as Watcher or NoC dump can vary with the TT-Metal and ttsim revision.</p><a href="./TTSIM_DEBUGGING_PATH.md">Open the complete debugging playbook ↗</a></div>
+        </section>
+
         <section className="content-section notebook-section">
-          <div className="section-heading"><span>04 / Evidence</span><h2>Keep a lab notebook Git can diff.</h2><p>One Markdown file per experiment is enough. The template forces the useful details without turning learning into paperwork.</p></div>
+          <div className="section-heading"><span>05 / Evidence</span><h2>Keep a lab notebook Git can diff.</h2><p>One Markdown file per experiment is enough. The template forces the useful details without turning learning into paperwork.</p></div>
           <Command label="notes/01-riscv-smoke.md" code="# Experiment 01 — virtual BRISC\n\n- Date:\n- TT-Metal commit: `git rev-parse HEAD`\n- ttsim version: v1.10.0\n- Architecture: Wormhole\n- Hypothesis:\n- Command:\n- Observed output:\n- One controlled change:\n- Result vs prediction:\n- What I think happened:\n- Next question:" />
           <label className="check"><input type="checkbox" checked={!!done["m-notes"]} onChange={() => toggle("m-notes")} /><span>First lab note committed</span></label>
         </section>
 
         <section id="docs" className="content-section docs-section">
-          <div className="section-heading"><span>05 / Documentation</span><h2>A reading path, not a link dump.</h2><p>These first-party references answer the questions that appear after the smoke test. Choose one track to keep the library compact.</p></div>
+          <div className="section-heading"><span>06 / Documentation</span><h2>A reading path, not a link dump.</h2><p>These first-party references answer the questions that appear after the smoke test. Choose one track to keep the library compact.</p></div>
           <div className="reading-order" aria-label="Recommended documentation order"><span>Recommended order</span><ol><li>Run the smoke test</li><li>Read the API boundary</li><li>Adapt one Metalium lab</li><li>Open the ISA only when needed</li></ol></div>
           <div className="doc-library">
             <div className="doc-tabs" role="tablist" aria-label="Documentation tracks">
@@ -274,7 +375,7 @@ function App() {
         </section>
 
         <section id="sources" className="content-section sources-section">
-          <div className="section-heading"><span>06 / Source map</span><h2>Primary sources, not folklore.</h2><p>Commands and constraints were checked against upstream material on 12 August 2026. Follow upstream first when versions change.</p></div>
+          <div className="section-heading"><span>07 / Source map</span><h2>Primary sources, not folklore.</h2><p>Commands and constraints were checked against upstream material on 12 August 2026. Follow upstream first when versions change.</p></div>
           <div className="source-grid">
             <a href="https://github.com/tenstorrent/ttsim"><span>01</span><div><strong>tenstorrent/ttsim</strong><p>Official source, builds, environment variables and known limitations.</p></div><i>↗</i></a>
             <a href="https://github.com/tenstorrent/ttsim/releases/latest"><span>02</span><div><strong>Latest ttsim release</strong><p>Prebuilt Wormhole, Blackhole and mesh libraries.</p></div><i>↗</i></a>

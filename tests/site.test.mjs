@@ -10,6 +10,17 @@ test("builds a GitHub Pages-ready field guide", async () => {
   assert.match(html, /og\.png/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/);
   await access(new URL("og.png", root));
+  await access(new URL("TTSIM_DEBUGGING_PATH.md", root));
+});
+
+test("includes the layered mechanism debugging guide", async () => {
+  const app = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const guide = await readFile(new URL("../docs/TTSIM_DEBUGGING_PATH.md", root), "utf8");
+  assert.match(app, /id="debug"/);
+  assert.match(app, /Follow one value through the machine/);
+  assert.match(guide, /Host C\+\+ is a normal Linux process/);
+  assert.match(guide, /BRISC, NCRISC, TRISC0, TRISC1 and TRISC2/);
+  assert.match(guide, /TR0.*TR1.*TR2/);
 });
 
 test("uses relative built asset paths for project Pages", async () => {

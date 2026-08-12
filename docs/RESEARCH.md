@@ -61,6 +61,14 @@ The website pins ttsim `v1.10.0`, the latest GitHub release observed on the rese
 - [TT-Metalium advanced topics](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/index.html): tiles, NoC memory, Tensix engines and data flow.
 - [Tenstorrent ISA documentation](https://github.com/tenstorrent/tt-isa-documentation): low-level Wormhole B0 and Blackhole A0 architecture references.
 - [ttsim QEMU Bridge](https://docs.tenstorrent.com/tt-vscode-toolkit/lessons/ttsim-qemu-bridge/): advanced driver-boundary workflow after the shared-library path.
+- [TT-Metalium tools](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html): official index for checkpoints, DPRINT, Watcher, profilers, asserts, Inspector, tt-triage and NoC tracing.
+- [Device Debug Print](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html): per-core and per-RISC filters, formatted kernel output, circular-buffer inspection and newline caveats.
+- [Debug Checkpoints](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/checkpoint.html): synchronized per-RISC CB/L1 snapshots and standalone dump helpers.
+- [Watcher](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/watcher.html): waypoints, hangs, assertions, NoC/CB sanitization and GDB state dumps.
+- [Device Program Profiler](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_program_profiler.html): named device scopes, generated CSV and mutual-exclusion requirements.
+- [Inspector](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/inspector.html) and [tt-triage](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/triage.html): host-runtime evidence and post-failure analysis.
+- [NOC Debug Dump](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/noc_debug_dump.html): experimental transaction tracing for missing barriers and ordering errors.
+- [Single-core matmul debugging lab](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/labs/matmul/lab1/lab1.html): official distinction between host GDB and kernel-specific debugging tools.
 
 ## Things deliberately excluded from the first path
 

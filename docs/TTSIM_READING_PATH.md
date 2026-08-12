@@ -2,6 +2,8 @@
 
 Use this list after the first `Success: Result is 21` smoke test. It favors small experiments and first-party Tenstorrent material over reading every document front to back.
 
+For mechanism-by-mechanism debugging, use [`TTSIM_DEBUGGING_PATH.md`](./TTSIM_DEBUGGING_PATH.md).
+
 ## 1. Orient yourself
 
 | Read | Use it for |
