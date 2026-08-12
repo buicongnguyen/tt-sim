@@ -16,3 +16,14 @@ test("uses relative built asset paths for project Pages", async () => {
   const html = await readFile(new URL("index.html", root), "utf8");
   assert.match(html, /(?:src|href)="\.\/assets\//);
 });
+
+test("ships a persistent system-aware light and dark theme", async () => {
+  const html = await readFile(new URL("index.html", root), "utf8");
+  const app = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/styles.css", root), "utf8");
+  assert.match(html, /ttsim-theme/);
+  assert.match(html, /prefers-color-scheme: dark/);
+  assert.match(app, /className="theme-toggle"/);
+  assert.match(app, /localStorage\.setItem\("ttsim-theme"/);
+  assert.match(styles, /:root\[data-theme="light"\]/);
+});

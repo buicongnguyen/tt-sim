@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 type CommandProps = { code: string; label?: string; shell?: "PowerShell" | "Ubuntu" };
+type Theme = "dark" | "light";
 
 const milestones = [
   ["m-wsl", "Open Ubuntu 22.04 in WSL2"],
@@ -148,8 +149,14 @@ function App() {
   const [activeLab, setActiveLab] = useState(0);
   const [activeDocTrack, setActiveDocTrack] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => document.documentElement.dataset.theme === "light" ? "light" : "dark");
 
   useEffect(() => localStorage.setItem("ttsim-progress", JSON.stringify(done)), [done]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("ttsim-theme", theme);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#07110f" : "#f7f3e8");
+  }, [theme]);
   const complete = useMemo(() => milestones.filter(([id]) => done[id]).length, [done]);
   const progress = Math.round((complete / milestones.length) * 100);
 
@@ -166,6 +173,7 @@ function App() {
         <button className="menu-button" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}>Index</button>
         <nav className={menuOpen ? "topnav open" : "topnav"} aria-label="Primary">
           <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#experiments">Experiments</a><a href="#docs">Docs</a>
+          <button className="theme-toggle" type="button" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} aria-pressed={theme === "light"} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><span aria-hidden="true">◐</span><small>{theme === "dark" ? "Light" : "Dark"}</small></button>
           <a className="repo-link" href="https://github.com/buicongnguyen/buicongnguyen.github.io/tree/main/tt-sim">GitHub ↗</a>
         </nav>
       </header>
