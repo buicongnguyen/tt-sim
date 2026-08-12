@@ -39,6 +39,8 @@ Write down the first observable mismatch—not the final cascade of errors.
 
 Official Metalium guidance separates host debugging from kernel debugging.
 
+**Read first:** [Single-core matmul debugging lab](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/labs/matmul/lab1/lab1.html). Keep [Inspector](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/inspector.html) and [tt-triage](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/triage.html) beside it for recorded host state and post-failure analysis.
+
 ```bash
 cd "$TT_METAL_HOME"
 ./build_metal.sh --build-type Debug
@@ -69,6 +71,8 @@ Inspector is designed to record Metal host-runtime facts with low overhead. Its 
 ## Pass 2 — trace one data-movement RISC with DPRINT
 
 The official ttsim lesson demonstrates DPRINT under simulation. Select only logical core `(0,0)` and BRISC first:
+
+**Read first:** [Device Debug Print](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html). Then follow the DPRINT experiment in [Twenty-and-Ten Things You Can Do with ttsim](https://docs.tenstorrent.com/tt-vscode-toolkit/lessons/ttsim-twenty-and-ten/).
 
 ```bash
 export TT_METAL_DPRINT_CORES=0,0
@@ -105,6 +109,8 @@ Observe:
 
 ## Pass 3 — take a consistent CB/L1 snapshot
 
+**Read first:** [Debug Checkpoints](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/checkpoint.html). Use [Memory for kernel developers](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/memory_for_kernel_developers.html) to interpret addresses and [Tiles](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/tiles.html) to interpret layout.
+
 For a quick, unsynchronized observation:
 
 ```cpp
@@ -134,6 +140,8 @@ Every active RISC must reach the matching checkpoint or the barrier itself will 
 
 ## Pass 4 — locate the first bad compute stage
 
+**Read first:** [Compute engines and data flow within Tensix](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/compute_engines_and_dataflow_within_tensix.html). Open the [ISA documentation](https://github.com/tenstorrent/tt-isa-documentation) only when the question reaches instruction behavior.
+
 Run separate passes for the three compute roles:
 
 | Filter | Mechanism | Question |
@@ -151,6 +159,8 @@ export TT_METAL_DPRINT_RISCVS=TR0  # then repeat with TR1 and TR2
 Print a small tile slice, not an entire tensor. The useful fact is the **last correct boundary**.
 
 ## Pass 5 — diagnose ordering and hangs
+
+**Read first:** [Watcher](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/watcher.html). For outstanding transaction ordering, use the separate experimental [NOC Debug Dump](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/noc_debug_dump.html) reference. Interpret simulator termination using [ttsim error handling](https://github.com/tenstorrent/ttsim/blob/main/docs/sim_error_handling.md).
 
 ttsim deliberately exposes software ordering permitted by synchronization, including schedules that may be rare on silicon. Treat a simulator-only race as evidence that the software is missing a required ordering edge.
 
@@ -184,6 +194,8 @@ export TT_METAL_LIGHTWEIGHT_KERNEL_ASSERTS=1
 After a hang, `tt-triage` can analyze Inspector and device state when supported by the active environment. Simulator failures are intentionally strict and can terminate through `_Exit(1)`, so run each experiment in its own process and capture stderr.
 
 ## Pass 7 — inspect chronology, never benchmark
+
+**Read first:** [Device Program Profiler](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_program_profiler.html). Use [Tracy Profiler](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/tracy_profiler.html) for the combined host/device view.
 
 Disable the other observers first:
 

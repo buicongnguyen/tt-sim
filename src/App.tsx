@@ -146,7 +146,11 @@ const debugLayers = [
     observe: "Step through host-side program construction and enqueue calls. Inspector records host-runtime facts that can remain available after the process exits.",
     lookFor: "Wrong buffer sizes, stale compile-time arguments, incorrect core selection, or a missing synchronization call on the host.",
     command: "./build_metal.sh --build-type Debug\ngdb --args ./build/programming_examples/metal_example_eltwise_binary",
-    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/labs/matmul/lab1/lab1.html",
+    references: [
+      { kind: "Read first", label: "Single-core matmul debugging lab", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/labs/matmul/lab1/lab1.html" },
+      { kind: "Host state", label: "Inspector", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/inspector.html" },
+      { kind: "After failure", label: "tt-triage", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/triage.html" },
+    ],
   },
   {
     number: "02",
@@ -157,7 +161,11 @@ const debugLayers = [
     observe: "Select one logical core and one RISC. Print runtime arguments, NoC addresses, transfer sizes and phase markers around reserve, transfer, barrier and push calls.",
     lookFor: "A bad address, wrong byte count, missing NoC barrier, or circular-buffer production that never becomes visible to compute.",
     command: "export TT_METAL_DPRINT_CORES=0,0\nexport TT_METAL_DPRINT_RISCVS=BR\nexport TT_METAL_DPRINT_ONE_FILE_PER_RISC=1\n./build/programming_examples/metal_example_eltwise_binary",
-    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html",
+    references: [
+      { kind: "Read first", label: "Device Debug Print", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html" },
+      { kind: "ttsim example", label: "Twenty-and-Ten: DPRINT experiment", url: "https://docs.tenstorrent.com/tt-vscode-toolkit/lessons/ttsim-twenty-and-ten/#the-kernel-that-runs-when-you-re-watching-is-not-the-kernel-that-runs-when-you-re-not" },
+      { kind: "RISC-V map", label: "Tenstorrent RISC-V guide", url: "https://docs.tenstorrent.com/tt-vscode-toolkit/riscv-guide/" },
+    ],
   },
   {
     number: "03",
@@ -168,7 +176,11 @@ const debugLayers = [
     observe: "Place the same named checkpoint in every active kernel on the core. The barrier stops all participating RISCs, then reports CB metadata before allowing them to continue.",
     lookFor: "A write pointer that did not advance, a read pointer that advanced too early, or mismatched tiles received and acknowledged.",
     command: "export TT_METAL_CHECKPOINT=1\nexport TT_METAL_DPRINT_CORES=0,0\nrm -rf ~/.cache/tt-metal-cache\n# Add DEBUG_CHECKPOINT(\"after_read\") to every active kernel.",
-    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/checkpoint.html",
+    references: [
+      { kind: "Read first", label: "Debug Checkpoints", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/checkpoint.html" },
+      { kind: "Memory model", label: "Memory for kernel developers", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/memory_for_kernel_developers.html" },
+      { kind: "Data layout", label: "Tiles", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/tiles.html" },
+    ],
   },
   {
     number: "04",
@@ -179,7 +191,11 @@ const debugLayers = [
     observe: "Run three separate instrumented passes: TR0 for unpack, TR1 for math and TR2 for pack. Compare a tiny slice rather than printing a full tile.",
     lookFor: "The last correct stage. That boundary narrows the bug to data format/unpack, the math operation, or packing/output layout.",
     command: "export TT_METAL_DPRINT_CORES=0,0\nexport TT_METAL_DPRINT_RISCVS=TR0  # repeat with TR1, then TR2\n./build/programming_examples/metal_example_eltwise_binary",
-    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html",
+    references: [
+      { kind: "Read first", label: "Compute engines and Tensix data flow", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/compute_engines_and_dataflow_within_tensix.html" },
+      { kind: "Observe values", label: "Device Debug Print", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html" },
+      { kind: "Low level", label: "Wormhole and Blackhole ISA docs", url: "https://github.com/tenstorrent/tt-isa-documentation" },
+    ],
   },
   {
     number: "05",
@@ -190,7 +206,11 @@ const debugLayers = [
     observe: "Start with ttsim’s strict error and DPRINT trail. If supported by the current TT-Metal/ttsim pair, use Watcher waypoints or a separate NOC Debug Dump run.",
     lookFor: "Missing read/write barriers, invalid coordinates, circular-buffer overflow, or two RISCs waiting on each other.",
     command: "unset TT_METAL_DPRINT_CORES TT_METAL_DEVICE_PROFILER\nexport TT_METAL_WATCHER=120\n./build/programming_examples/metal_example_eltwise_binary\n# Run NOC Debug Dump separately; do not combine the tools.",
-    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/watcher.html",
+    references: [
+      { kind: "Read first", label: "Watcher", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/watcher.html" },
+      { kind: "NoC ordering", label: "NOC Debug Dump", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/noc_debug_dump.html" },
+      { kind: "Simulator exit", label: "ttsim error handling", url: "https://github.com/tenstorrent/ttsim/blob/main/docs/sim_error_handling.md" },
+    ],
   },
   {
     number: "06",
@@ -201,7 +221,11 @@ const debugLayers = [
     observe: "Add a small number of named device zones and view their chronology beside host scopes. Disable DPRINT, Watcher and NoC dump first because the tools compete for kernel resources.",
     lookFor: "Unexpected gaps, repeated launches, or scope ordering. Never interpret ttsim wall time or cycle timing as silicon performance.",
     command: "unset TT_METAL_DPRINT_CORES TT_METAL_WATCHER TT_METAL_NOC_DEBUG_DUMP\nTT_METAL_DEVICE_PROFILER=1 ./build/programming_examples/metal_example_eltwise_binary",
-    source: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_program_profiler.html",
+    references: [
+      { kind: "Read first", label: "Device Program Profiler", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_program_profiler.html" },
+      { kind: "Host timeline", label: "Tracy Profiler", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/tracy_profiler.html" },
+      { kind: "All tools", label: "TT-Metalium debugging tools index", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html" },
+    ],
   },
 ] as const;
 
@@ -345,7 +369,7 @@ function App() {
               <p className="debug-question">{debugLayer.question}</p>
               <div className="debug-evidence"><div><small>Observe</small><p>{debugLayer.observe}</p></div><div><small>Look for</small><p>{debugLayer.lookFor}</p></div></div>
               <Command code={debugLayer.command} label="Focused debug pass" />
-              <a className="debug-source" href={debugLayer.source}>Open the official documentation for this mechanism ↗</a>
+              <div className="debug-references" aria-label={`References for ${debugLayer.title}`}><span>Read and follow</span><div>{debugLayer.references.map((reference, index) => <a key={reference.url} className={index === 0 ? "primary" : ""} href={reference.url}><small>{reference.kind}</small><strong>{reference.label}</strong><i>↗</i></a>)}</div></div>
             </article>
           </div>
           <div className="debug-playbook"><p><b>Important ttsim boundary:</b> use GDB for the host process. Device kernels are not ordinary host threads; follow them with DPRINT, checkpoints, asserts and state dumps. Support for hardware-oriented tools such as Watcher or NoC dump can vary with the TT-Metal and ttsim revision.</p><a href="./TTSIM_DEBUGGING_PATH.md">Open the complete debugging playbook ↗</a></div>

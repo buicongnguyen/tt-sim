@@ -11,6 +11,8 @@ Use this after the first ttsim smoke test. The complete editable source is maint
 5. **NoC ordering and hangs:** start with strict ttsim errors. When supported by the selected TT-Metal/ttsim pair, use Watcher waypoints or a separate NOC Debug Dump run.
 6. **Chronology:** use Device Profiler or Tracy only to understand execution order. Never interpret simulator timing as silicon performance.
 
+Each step’s exact official reference is linked below so you can keep the relevant document open while running the command.
+
 ## Safe focused DPRINT pass
 
 ```bash
@@ -37,9 +39,12 @@ DPRINT is chosen at kernel compile time and changes the observed kernel. End eve
 
 ## Official documentation
 
+- [Host GDB debugging lab](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/labs/matmul/lab1/lab1.html)
 - [TT-Metalium debugging tools](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html)
 - [Device Debug Print](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html)
 - [Debug Checkpoints](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/checkpoint.html)
+- [Compute engines and data flow within Tensix](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/compute_engines_and_dataflow_within_tensix.html)
+- [Memory for kernel developers](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/memory_for_kernel_developers.html)
 - [Watcher](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/watcher.html)
 - [Device Program Profiler](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_program_profiler.html)
 - [Inspector and tt-triage](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/triage.html)
