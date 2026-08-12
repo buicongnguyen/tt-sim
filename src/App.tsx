@@ -80,6 +80,47 @@ const labs = [
   },
 ] as const;
 
+const docTracks = [
+  {
+    id: "start",
+    label: "Start here",
+    eyebrow: "Orientation",
+    title: "Understand the simulator before changing code.",
+    items: [
+      { title: "ttsim README", source: "tenstorrent/ttsim", tag: "Setup", description: "Supported hosts and architectures, release libraries, source builds and TT-Metal integration.", url: "https://github.com/tenstorrent/ttsim" },
+      { title: "Latest ttsim release", source: "GitHub Releases", tag: "Versions", description: "Download current architecture-specific libraries and read release notes before choosing a pin.", url: "https://github.com/tenstorrent/ttsim/releases/latest" },
+      { title: "Simulator FAQ", source: "Tenstorrent Lessons", tag: "Limits", description: "What ttsim is good for—and why simulator runtime is not a silicon performance result.", url: "https://docs.tenstorrent.com/tt-vscode-toolkit/faq/" },
+      { title: "Twenty-and-Ten experiments", source: "Tenstorrent Lessons", tag: "Hands-on", description: "A broad official catalog of small tests, debug features and architecture explorations.", url: "https://docs.tenstorrent.com/tt-vscode-toolkit/lessons/ttsim-twenty-and-ten/" },
+    ],
+  },
+  {
+    id: "build",
+    label: "Build & test",
+    eyebrow: "Kernel practice",
+    title: "Move from examples to controlled experiments.",
+    items: [
+      { title: "TT-Metalium getting started", source: "TT-Metal docs", tag: "Concepts", description: "The host-to-device pipeline and the reader, compute and writer kernel roles.", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/get_started/get_started.html" },
+      { title: "Programming examples", source: "TT-Metal docs", tag: "Examples", description: "DRAM loopback, elementwise operations, SFPU work and single- or multi-core matmul.", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/examples/index.html" },
+      { title: "Metalium lab exercises", source: "TT-Metal docs", tag: "Labs", description: "Guided matmul, multicast, DPRINT, debugging and profiling exercises to adapt for ttsim.", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/labs/index.html" },
+      { title: "Explore TT-Metalium", source: "Tenstorrent Lessons", tag: "Map", description: "A tour of the example levels and the source tree when you are ready to leave the happy path.", url: "https://docs.tenstorrent.com/tt-vscode-toolkit/lessons/explore-metalium/" },
+    ],
+  },
+  {
+    id: "internals",
+    label: "Go deeper",
+    eyebrow: "Simulator internals",
+    title: "Learn the boundaries behind the virtual device.",
+    items: [
+      { title: "libttsim API and ABI", source: "ttsim docs", tag: "Contract", description: "Lifecycle, DMA callbacks, PCI configuration, BAR memory, clocks and compatibility policy.", url: "https://github.com/tenstorrent/ttsim/blob/main/docs/libttsim_api.md" },
+      { title: "Simulator error handling", source: "ttsim docs", tag: "Debug", description: "How strict simulator failures are classified, why processes terminate, and how to isolate tests.", url: "https://github.com/tenstorrent/ttsim/blob/main/docs/sim_error_handling.md" },
+      { title: "Unsupported functionality", source: "ttsim docs", tag: "Scope", description: "The upstream record of deliberately unsupported behavior and where to check before filing a bug.", url: "https://github.com/tenstorrent/ttsim/blob/main/docs/unsupported_functionality.md" },
+      { title: "Metalium advanced topics", source: "TT-Metal docs", tag: "Architecture", description: "Tiles, NoC memory addressing, Tensix compute engines, data flow and FP32 accuracy.", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/index.html" },
+      { title: "Wormhole and Blackhole ISA", source: "tt-isa-documentation", tag: "Low level", description: "Architecture-specific instruction references; never assume the two instruction sets are identical.", url: "https://github.com/tenstorrent/tt-isa-documentation" },
+      { title: "ttsim QEMU Bridge", source: "Tenstorrent Lessons", tag: "Advanced", description: "Add the kernel-driver boundary after the shared-library workflow is familiar.", url: "https://docs.tenstorrent.com/tt-vscode-toolkit/lessons/ttsim-qemu-bridge/" },
+    ],
+  },
+] as const;
+
 function Command({ code, label, shell = "Ubuntu" }: CommandProps) {
   const [copied, setCopied] = useState(false);
   async function copy() {
@@ -105,6 +146,7 @@ function App() {
     try { return JSON.parse(localStorage.getItem("ttsim-progress") ?? "{}"); } catch { return {}; }
   });
   const [activeLab, setActiveLab] = useState(0);
+  const [activeDocTrack, setActiveDocTrack] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => localStorage.setItem("ttsim-progress", JSON.stringify(done)), [done]);
@@ -116,13 +158,14 @@ function App() {
   }
 
   const lab = labs[activeLab];
+  const docTrack = docTracks[activeDocTrack];
   return (
     <div className="site-shell">
       <header className="topbar">
         <a className="brand" href="#top" aria-label="TT Sim Lab home"><span>TT</span><i>•</i>SIM LAB</a>
         <button className="menu-button" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}>Index</button>
         <nav className={menuOpen ? "topnav open" : "topnav"} aria-label="Primary">
-          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#experiments">Experiments</a><a href="#sources">Sources</a>
+          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#experiments">Experiments</a><a href="#docs">Docs</a>
           <a className="repo-link" href="https://github.com/buicongnguyen/buicongnguyen.github.io/tree/main/tt-sim">GitHub ↗</a>
         </nav>
       </header>
@@ -205,8 +248,25 @@ function App() {
           <label className="check"><input type="checkbox" checked={!!done["m-notes"]} onChange={() => toggle("m-notes")} /><span>First lab note committed</span></label>
         </section>
 
+        <section id="docs" className="content-section docs-section">
+          <div className="section-heading"><span>05 / Documentation</span><h2>A reading path, not a link dump.</h2><p>These first-party references answer the questions that appear after the smoke test. Choose one track to keep the library compact.</p></div>
+          <div className="reading-order" aria-label="Recommended documentation order"><span>Recommended order</span><ol><li>Run the smoke test</li><li>Read the API boundary</li><li>Adapt one Metalium lab</li><li>Open the ISA only when needed</li></ol></div>
+          <div className="doc-library">
+            <div className="doc-tabs" role="tablist" aria-label="Documentation tracks">
+              {docTracks.map((track, index) => <button key={track.id} type="button" role="tab" aria-selected={activeDocTrack === index} className={activeDocTrack === index ? "active" : ""} onClick={() => setActiveDocTrack(index)}><span>0{index + 1}</span><strong>{track.label}</strong></button>)}
+            </div>
+            <div className="doc-panel" role="tabpanel">
+              <div className="doc-panel-head"><div><p className="eyebrow">{docTrack.eyebrow}</p><h3>{docTrack.title}</h3></div><span>{docTrack.items.length} official references</span></div>
+              <div className="doc-grid">
+                {docTrack.items.map((item) => <a className="doc-card" key={item.title} href={item.url}><div><span>{item.tag}</span><i>↗</i></div><strong>{item.title}</strong><small>{item.source}</small><p>{item.description}</p></a>)}
+              </div>
+            </div>
+          </div>
+          <p className="offline-doc">Prefer a checklist? Open the <a href="./TTSIM_READING_PATH.md">standalone reading path ↗</a>.</p>
+        </section>
+
         <section id="sources" className="content-section sources-section">
-          <div className="section-heading"><span>05 / Source map</span><h2>Primary sources, not folklore.</h2><p>Commands and constraints were checked against upstream material on 12 August 2026. Follow upstream first when versions change.</p></div>
+          <div className="section-heading"><span>06 / Source map</span><h2>Primary sources, not folklore.</h2><p>Commands and constraints were checked against upstream material on 12 August 2026. Follow upstream first when versions change.</p></div>
           <div className="source-grid">
             <a href="https://github.com/tenstorrent/ttsim"><span>01</span><div><strong>tenstorrent/ttsim</strong><p>Official source, builds, environment variables and known limitations.</p></div><i>↗</i></a>
             <a href="https://github.com/tenstorrent/ttsim/releases/latest"><span>02</span><div><strong>Latest ttsim release</strong><p>Prebuilt Wormhole, Blackhole and mesh libraries.</p></div><i>↗</i></a>

@@ -53,6 +53,14 @@ The website pins ttsim `v1.10.0`, the latest GitHub release observed on the rese
 - [TT-Metal installation](https://github.com/tenstorrent/tt-metal/blob/main/INSTALLING.md): source clone, build script and environment setup.
 - [Twenty-and-Ten Things You Can Do with ttsim](https://docs.tenstorrent.com/tt-vscode-toolkit/lessons/ttsim-twenty-and-ten/): validated learning experiments and example outputs.
 - [ttsim FAQ](https://docs.tenstorrent.com/tt-vscode-toolkit/faq/): learning-appropriate workloads and performance limitations.
+- [libttsim API and ABI](https://github.com/tenstorrent/ttsim/blob/main/docs/libttsim_api.md): simulator lifecycle, PCIe model, DMA callbacks, BAR access, clocking and compatibility contract.
+- [ttsim error handling](https://github.com/tenstorrent/ttsim/blob/main/docs/sim_error_handling.md): strict failure categories, process termination behavior and test-isolation guidance.
+- [Unsupported functionality](https://github.com/tenstorrent/ttsim/blob/main/docs/unsupported_functionality.md): upstream scope boundary for features intentionally not modeled.
+- [TT-Metalium programming examples](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/examples/index.html): runnable examples from DRAM loopback through multicore matmul.
+- [TT-Metalium lab exercises](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/labs/index.html): guided kernel, multicast, DPRINT, debugging and profiling work.
+- [TT-Metalium advanced topics](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/index.html): tiles, NoC memory, Tensix engines and data flow.
+- [Tenstorrent ISA documentation](https://github.com/tenstorrent/tt-isa-documentation): low-level Wormhole B0 and Blackhole A0 architecture references.
+- [ttsim QEMU Bridge](https://docs.tenstorrent.com/tt-vscode-toolkit/lessons/ttsim-qemu-bridge/): advanced driver-boundary workflow after the shared-library path.
 
 ## Things deliberately excluded from the first path
 

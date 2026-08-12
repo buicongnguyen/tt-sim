@@ -35,6 +35,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `src/` — interactive guide
 - `scripts/` — WSL audit, activation and smoke-test helpers
 - `docs/RESEARCH.md` — scope decisions, machine audit and upstream evidence
+- `docs/TTSIM_READING_PATH.md` — curated first-party documentation and suggested reading order
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope
