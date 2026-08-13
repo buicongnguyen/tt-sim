@@ -12,6 +12,39 @@ const milestones = [
   ["m-notes", "Record the first experiment"],
 ] as const;
 
+const chapterGroups = [
+  {
+    label: "Orientation",
+    chapters: [
+      { id: "top", number: "00", title: "Cover & execution path", note: "Start here" },
+      { id: "machine", number: "01", title: "Machine audit", note: "Check the runway" },
+    ],
+  },
+  {
+    label: "Build the lab",
+    chapters: [
+      { id: "setup", number: "02", title: "Deployment plan", note: "Install and verify" },
+      { id: "experiments", number: "03", title: "Six experiments", note: "Learn by changing" },
+    ],
+  },
+  {
+    label: "Observe the machine",
+    chapters: [
+      { id: "debug", number: "04", title: "Mechanism debugger", note: "Follow one value" },
+      { id: "notebook", number: "05", title: "Evidence notebook", note: "Record each result" },
+    ],
+  },
+  {
+    label: "Reference shelf",
+    chapters: [
+      { id: "docs", number: "06", title: "Documentation", note: "Read in order" },
+      { id: "sources", number: "07", title: "Source map", note: "Verify upstream" },
+    ],
+  },
+] as const;
+
+const chapterIds = chapterGroups.flatMap((group) => group.chapters.map((chapter) => chapter.id));
+
 const labs = [
   {
     id: "lab-1",
@@ -257,6 +290,9 @@ function App() {
   const [activeDebugLayer, setActiveDebugLayer] = useState(0);
   const [activeDocTrack, setActiveDocTrack] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [chaptersOpen, setChaptersOpen] = useState(false);
+  const [activeChapter, setActiveChapter] = useState("top");
+  const [readingProgress, setReadingProgress] = useState(0);
   const [theme, setTheme] = useState<Theme>(() => document.documentElement.dataset.theme === "light" ? "light" : "dark");
 
   useEffect(() => localStorage.setItem("ttsim-progress", JSON.stringify(done)), [done]);
@@ -265,6 +301,26 @@ function App() {
     localStorage.setItem("ttsim-theme", theme);
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#07110f" : "#f7f3e8");
   }, [theme]);
+  useEffect(() => {
+    const sections = chapterIds.map((id) => document.getElementById(id)).filter((section): section is HTMLElement => Boolean(section));
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+      if (visible[0]?.target.id) setActiveChapter(visible[0].target.id);
+    }, { rootMargin: "-18% 0px -68% 0px", threshold: [0, 0.1, 0.35] });
+    sections.forEach((section) => observer.observe(section));
+    const updateProgress = () => {
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      setReadingProgress(scrollable > 0 ? Math.min(100, Math.max(0, Math.round((window.scrollY / scrollable) * 100))) : 0);
+    };
+    updateProgress();
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    window.addEventListener("resize", updateProgress);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", updateProgress);
+      window.removeEventListener("resize", updateProgress);
+    };
+  }, []);
   const complete = useMemo(() => milestones.filter(([id]) => done[id]).length, [done]);
   const progress = Math.round((complete / milestones.length) * 100);
 
@@ -279,6 +335,7 @@ function App() {
     <div className="site-shell">
       <header className="topbar">
         <a className="brand" href="#top" aria-label="TT Sim Lab home"><span>TT</span><i>•</i>SIM LAB</a>
+        <button className="chapters-button" type="button" onClick={() => setChaptersOpen(!chaptersOpen)} aria-expanded={chaptersOpen} aria-controls="book-sidebar"><span aria-hidden="true">☰</span> Chapters</button>
         <button className="menu-button" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}>Index</button>
         <nav className={menuOpen ? "topnav open" : "topnav"} aria-label="Primary">
           <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#experiments">Experiments</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
@@ -287,8 +344,23 @@ function App() {
         </nav>
       </header>
 
-      <main id="top">
-        <section className="hero section-grid">
+      <div className={chaptersOpen ? "book-layout chapters-open" : "book-layout"}>
+        <button className="chapter-scrim" type="button" aria-label="Close chapter navigation" onClick={() => setChaptersOpen(false)} />
+        <aside className="book-sidebar" id="book-sidebar" aria-label="TT Sim Lab chapters">
+          <div className="book-sidebar-head">
+            <p className="eyebrow">TT•SIM field guide</p>
+            <h2>Build, observe,<br/>understand.</h2>
+            <p>Follow the chapters in order, or jump back to the mechanism you are testing.</p>
+          </div>
+          <div className="book-progress" aria-label={`${readingProgress}% of guide read`}><div><span>Reading progress</span><strong>{readingProgress}%</strong></div><div><i style={{width: `${readingProgress}%`}} /></div></div>
+          <nav className="chapter-nav" aria-label="Book contents">
+            {chapterGroups.map((group) => <div className="chapter-group" key={group.label}><h3>{group.label}</h3>{group.chapters.map((chapter) => <a key={chapter.id} href={`#${chapter.id}`} className={activeChapter === chapter.id ? "active" : ""} aria-current={activeChapter === chapter.id ? "location" : undefined} onClick={() => setChaptersOpen(false)}><span>{chapter.number}</span><div><strong>{chapter.title}</strong><small>{chapter.note}</small></div></a>)}</div>)}
+          </nav>
+          <div className="sidebar-shelf"><span>Keep beside the terminal</span><a href="./TTSIM_DEBUGGING_PATH.md">Debugging playbook <i>↗</i></a><a href="./TTSIM_READING_PATH.md">Reading path <i>↗</i></a></div>
+        </aside>
+
+        <main>
+        <section id="top" className="hero section-grid">
           <div className="hero-copy">
             <p className="eyebrow"><span>Field guide 001</span><span>Updated 12 Aug 2026</span></p>
             <h1>Build a chip lab.<br/><em>Skip the chip.</em></h1>
@@ -375,7 +447,7 @@ function App() {
           <div className="debug-playbook"><p><b>Important ttsim boundary:</b> use GDB for the host process. Device kernels are not ordinary host threads; follow them with DPRINT, checkpoints, asserts and state dumps. Support for hardware-oriented tools such as Watcher or NoC dump can vary with the TT-Metal and ttsim revision.</p><a href="./TTSIM_DEBUGGING_PATH.md">Open the complete debugging playbook ↗</a></div>
         </section>
 
-        <section className="content-section notebook-section">
+        <section id="notebook" className="content-section notebook-section">
           <div className="section-heading"><span>05 / Evidence</span><h2>Keep a lab notebook Git can diff.</h2><p>One Markdown file per experiment is enough. The template forces the useful details without turning learning into paperwork.</p></div>
           <Command label="notes/01-riscv-smoke.md" code="# Experiment 01 — virtual BRISC\n\n- Date:\n- TT-Metal commit: `git rev-parse HEAD`\n- ttsim version: v1.10.0\n- Architecture: Wormhole\n- Hypothesis:\n- Command:\n- Observed output:\n- One controlled change:\n- Result vs prediction:\n- What I think happened:\n- Next question:" />
           <label className="check"><input type="checkbox" checked={!!done["m-notes"]} onChange={() => toggle("m-notes")} /><span>First lab note committed</span></label>
@@ -408,7 +480,8 @@ function App() {
             <a href="https://github.com/mesham/tt-sim"><span>05</span><div><strong>mesham/tt-sim</strong><p>The separate community Python architecture simulator, for comparison.</p></div><i>↗</i></a>
           </div>
         </section>
-      </main>
+        </main>
+      </div>
       <footer><a className="brand" href="#top"><span>TT</span><i>•</i>SIM LAB</a><p>Independent learning guide. Tenstorrent, Wormhole and Blackhole are referenced for educational purposes.</p><a href="https://github.com/buicongnguyen/buicongnguyen.github.io/tree/main/tt-sim">Page source on GitHub ↗</a></footer>
     </div>
   );

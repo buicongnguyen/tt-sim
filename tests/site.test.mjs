@@ -26,6 +26,17 @@ test("includes the layered mechanism debugging guide", async () => {
   assert.match(guide, /TR0.*TR1.*TR2/);
 });
 
+test("provides a book-style chapter sidebar", async () => {
+  const app = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/styles.css", root), "utf8");
+  assert.match(app, /className="book-sidebar"/);
+  assert.match(app, /Reading progress/);
+  assert.match(app, /aria-current=.*location/);
+  assert.match(app, /id="notebook"/);
+  assert.match(styles, /\.book-sidebar\s*{[^}]*position:sticky/s);
+  assert.match(styles, /\.chapters-open \.book-sidebar/);
+});
+
 test("uses relative built asset paths for project Pages", async () => {
   const html = await readFile(new URL("index.html", root), "utf8");
   assert.match(html, /(?:src|href)="\.\/assets\//);
