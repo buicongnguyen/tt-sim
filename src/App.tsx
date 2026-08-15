@@ -340,7 +340,7 @@ function App() {
         <nav className={menuOpen ? "topnav open" : "topnav"} aria-label="Primary">
           <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#experiments">Experiments</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
           <button className="theme-toggle" type="button" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} aria-pressed={theme === "light"} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><span aria-hidden="true">◐</span><small>{theme === "dark" ? "Light" : "Dark"}</small></button>
-          <a className="repo-link" href="https://github.com/buicongnguyen/buicongnguyen.github.io/tree/main/tt-sim">GitHub ↗</a>
+          <a className="repo-link" href="https://github.com/buicongnguyen/tt-sim">GitHub ↗</a>
         </nav>
       </header>
 
@@ -482,7 +482,7 @@ function App() {
         </section>
         </main>
       </div>
-      <footer><a className="brand" href="#top"><span>TT</span><i>•</i>SIM LAB</a><p>Independent learning guide. Tenstorrent, Wormhole and Blackhole are referenced for educational purposes.</p><a href="https://github.com/buicongnguyen/buicongnguyen.github.io/tree/main/tt-sim">Page source on GitHub ↗</a></footer>
+      <footer><a className="brand" href="#top"><span>TT</span><i>•</i>SIM LAB</a><p>Independent learning guide. Tenstorrent, Wormhole and Blackhole are referenced for educational purposes.</p><a href="https://github.com/buicongnguyen/tt-sim">Page source on GitHub ↗</a></footer>
     </div>
   );
 }

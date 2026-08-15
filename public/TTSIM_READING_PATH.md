@@ -1,6 +1,6 @@
 # ttsim documentation reading path
 
-This is the web-accessible copy of [`docs/TTSIM_READING_PATH.md`](https://github.com/buicongnguyen/buicongnguyen.github.io/blob/main/tt-sim/TTSIM_READING_PATH.md). Use it after the first `Success: Result is 21` smoke test.
+This is the web-accessible copy of [`docs/TTSIM_READING_PATH.md`](https://github.com/buicongnguyen/tt-sim/blob/main/docs/TTSIM_READING_PATH.md). Use it after the first `Success: Result is 21` smoke test.
 
 ## Recommended order
 
