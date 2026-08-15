@@ -24,6 +24,7 @@ const chapterGroups = [
     label: "Build the lab",
     chapters: [
       { id: "setup", number: "02", title: "Deployment plan", note: "Install and verify" },
+      { id: "verified", number: "02A", title: "Verified Blackhole run", note: "Read the real log" },
       { id: "experiments", number: "03", title: "Six experiments", note: "Learn by changing" },
     ],
   },
@@ -44,6 +45,16 @@ const chapterGroups = [
 ] as const;
 
 const chapterIds = chapterGroups.flatMap((group) => group.chapters.map((chapter) => chapter.id));
+
+const blackholeSignals = [
+  { kind: "pass", label: "PASS", signal: "TTSimTTDevice … device_id=0xb140", meaning: "TT-Metal loaded the Blackhole simulator and identified the virtual device." },
+  { kind: "expected", label: "EXPECTED", signal: "Disabling multi-erisc mode with simulator/emule target device", meaning: "The simulator intentionally uses one Ethernet RISC instead of Blackhole dual-ERISC mode." },
+  { kind: "benign", label: "BENIGN", signal: "Board unknown expects 0 units … mask indicates 2 units", meaning: "UMD cannot assign a physical board type to the simulated chip; the selected Blackhole descriptor is still correct." },
+  { kind: "expected", label: "EXPECTED", signal: "Dispatch telemetry SMC buffer unavailable", meaning: "A simulator has no physical firmware information provider or SMC telemetry buffer." },
+  { kind: "pass", label: "PASS", signal: "Success: Result is 21", meaning: "Host dispatch, JIT compilation, BRISC execution and the returned value all passed." },
+  { kind: "info", label: "INFO", signal: "JIT cache stats: 0/9 hits", meaning: "The first run compiled nine artifacts. Later identical runs may reuse the cache." },
+  { kind: "info", label: "INFO", signal: "[6669] 0.3 seconds (24.6 KHz)", meaning: "Simulator throughput only—never interpret it as Blackhole silicon performance." },
+] as const;
 
 const labs = [
   {
@@ -362,7 +373,7 @@ function App() {
         <main>
         <section id="top" className="hero section-grid">
           <div className="hero-copy">
-            <p className="eyebrow"><span>Field guide 001</span><span>Updated 12 Aug 2026</span></p>
+            <p className="eyebrow"><span>Field guide 001</span><span>Updated 16 Aug 2026</span></p>
             <h1>Build a chip lab.<br/><em>Skip the chip.</em></h1>
             <p className="lede">A machine-specific path from Windows to your first Tenstorrent kernel—using the official <code>ttsim</code>, Ubuntu 22.04 on WSL2, and no accelerator hardware.</p>
             <div className="hero-actions"><a className="button primary" href="#setup">Start the setup</a><a className="button secondary" href="#experiments">See the labs</a></div>
@@ -395,7 +406,7 @@ function App() {
             <article><small>Compute</small><strong>28 logical CPUs</strong><span>good build parallelism</span></article>
             <article><small>Memory</small><strong>15 GiB + 4 GiB swap</strong><span>workable; avoid other heavy jobs</span></article>
             <article><small>WSL disk</small><strong>942 GiB free</strong><span className="status good">ample headroom</span></article>
-            <article><small>Toolchain</small><strong>Git + Python ready</strong><span className="status warn">CMake / Ninja / g++ pending</span></article>
+            <article><small>Toolchain</small><strong>TT-Metal built</strong><span className="status good">Blackhole smoke test passed</span></article>
           </div>
           <div className="note machine-note"><b>One Windows fix:</b> Docker Desktop is currently the default WSL distro. Make Ubuntu the default so plain <code>wsl</code> opens the lab environment.</div>
           <Command shell="PowerShell" code="wsl --set-default Ubuntu-22.04\nwsl -d Ubuntu-22.04" />
@@ -404,11 +415,25 @@ function App() {
         <section id="setup" className="content-section setup-section">
           <div className="section-heading"><span>02 / Deployment plan</span><h2>Four layers. One known-good signal.</h2><p>Run Windows commands in PowerShell and everything else inside Ubuntu. Keep repositories in the WSL filesystem (<code>~/src</code>), not under <code>/mnt/c</code>, for better build performance.</p></div>
           <div className="steps">
-            <article className="step"><div className="step-index">A</div><div className="step-body"><p className="eyebrow">Preflight · 5 min</p><h3>Prepare Ubuntu and basic build tools</h3><p>Update packages and install the small toolchain needed before Tenstorrent’s own dependency script takes over.</p><Command code="sudo apt update\nsudo apt install -y build-essential git cmake ninja-build python3-venv wget ccache\nmkdir -p ~/src ~/sim" /><label className="check"><input type="checkbox" checked={!!done["m-tools"]} onChange={() => toggle("m-tools")} /><span>Prerequisites installed</span></label></div></article>
-            <article className="step"><div className="step-index">B</div><div className="step-body"><p className="eyebrow">TT-Metalium · 30–60+ min</p><h3>Clone with SSH, then build from source</h3><p>The source path is required for kernel examples. This machine’s GitHub SSH key is already authenticated as <code>buicongnguyen</code>.</p><Command code="cd ~/src\ngit clone --recurse-submodules git@github.com:tenstorrent/tt-metal.git\ncd tt-metal\nsudo ./install_dependencies.sh\n./build_metal.sh --enable-ccache\nexport TT_METAL_HOME=$PWD" /><div className="note"><b>Checkpoint:</b> stay on one TT-Metal commit while learning. Record <code>git rev-parse HEAD</code> in your lab notes so results are reproducible.</div><label className="check"><input type="checkbox" checked={!!done["m-metal"]} onChange={() => toggle("m-metal")} /><span>TT-Metalium build completed</span></label></div></article>
+            <article className="step"><div className="step-index">A</div><div className="step-body"><p className="eyebrow">Preflight · 5 min</p><h3>Prepare Ubuntu and basic build tools</h3><p>Update packages and install the small toolchain needed before Tenstorrent’s own dependency script takes over.</p><Command code="sudo apt update\nsudo apt install -y build-essential git git-lfs cmake ninja-build python3-venv wget ccache\ngit lfs install\nmkdir -p ~/src ~/sim" /><label className="check"><input type="checkbox" checked={!!done["m-tools"]} onChange={() => toggle("m-tools")} /><span>Prerequisites installed</span></label></div></article>
+            <article className="step"><div className="step-index">B</div><div className="step-body"><p className="eyebrow">TT-Metalium · 30–60+ min</p><h3>Clone with SSH, then build from source</h3><p>The source path is required for kernel examples. This machine’s GitHub SSH key is already authenticated as <code>buicongnguyen</code>. Limit parallel compilation because WSL exposes 28 CPUs but has 15 GiB RAM.</p><Command code="cd ~/src\ngit clone --recurse-submodules git@github.com:tenstorrent/tt-metal.git\ncd tt-metal\nsudo ./install_dependencies.sh\nCMAKE_BUILD_PARALLEL_LEVEL=8 ./build_metal.sh \\\n  --enable-ccache \\\n  --build-programming-examples \\\n  --without-distributed\nexport TT_METAL_HOME=$PWD" /><div className="note"><b>Checkpoint:</b> stay on one TT-Metal commit while learning. Record <code>git rev-parse HEAD</code> in your lab notes so results are reproducible. If compilation is killed for memory pressure, repeat with <code>CMAKE_BUILD_PARALLEL_LEVEL=4</code>.</div><label className="check"><input type="checkbox" checked={!!done["m-metal"]} onChange={() => toggle("m-metal")} /><span>TT-Metalium build completed</span></label></div></article>
             <article className="step"><div className="step-index">C</div><div className="step-body"><p className="eyebrow">ttsim · 5 min</p><h3>Stage the official simulator libraries</h3><p>Version <code>v1.10.0</code> was the latest release at research time. Pin it for reproducibility; if TT-Metal reports an ABI mismatch, use the simulator version required by that TT-Metal revision.</p><Command code="cd ~/sim\nTTSIM_VERSION=v1.10.0\nwget https://github.com/tenstorrent/ttsim/releases/download/${TTSIM_VERSION}/libttsim_wh.so\nwget https://github.com/tenstorrent/ttsim/releases/download/${TTSIM_VERSION}/libttsim_bh.so\ncp $TT_METAL_HOME/tt_metal/soc_descriptors/wormhole_b0_80_arch.yaml soc_descriptor.yaml\nfile libttsim_wh.so" /><label className="check"><input type="checkbox" checked={!!done["m-sim"]} onChange={() => toggle("m-sim")} /><span>Simulator libraries staged</span></label></div></article>
             <article className="step"><div className="step-index">D</div><div className="step-body"><p className="eyebrow">Activate + verify · 5 min</p><h3>Route TT-Metal into virtual Wormhole</h3><p>Slow dispatch is the recommended simulator path. SFPLOADMACRO is not supported, so disable it before running kernels.</p><Command code="export TT_METAL_SIMULATOR=~/sim/libttsim_wh.so\nexport TT_METAL_SLOW_DISPATCH_MODE=1\nexport TT_METAL_DISABLE_SFPLOADMACRO=1\ncd $TT_METAL_HOME\n./build/programming_examples/metal_example_add_2_integers_in_riscv" /><div className="expected"><small>Expected terminal signal</small><code>Success: Result is 21</code></div><label className="check"><input type="checkbox" checked={!!done["m-smoke"]} onChange={() => toggle("m-smoke")} /><span>Smoke test returned 21</span></label></div></article>
           </div>
+        </section>
+
+        <section id="verified" className="content-section verification-section">
+          <div className="section-heading"><span>02A / Verified run</span><h2>A noisy terminal can still be a clean pass.</h2><p>This Blackhole smoke test ran successfully on this WSL2 machine on 16 August 2026. Treat the result line and clean shutdown as the verdict; classify simulator-only warnings instead of guessing.</p></div>
+          <div className="verification-summary">
+            <div className="verification-verdict"><span>Observed result</span><strong>PASS</strong><code>Success: Result is 21</code></div>
+            <dl><div><dt>Architecture</dt><dd>Blackhole · device 0xb140</dd></div><div><dt>TT-Metal</dt><dd>50a82f83559</dd></div><div><dt>Revision</dt><dd>v0.77.0-dev20260815-5</dd></div><div><dt>UMD</dt><dd>9bbe7bc9</dd></div><div><dt>Host</dt><dd>WSL2 · Ubuntu 22.04.5 · x86_64</dd></div><div><dt>Descriptor</dt><dd>Exact blackhole_140_arch.yaml match</dd></div></dl>
+          </div>
+          <div className="verified-command"><Command label="Repeat the verified Blackhole run" code="cp $TT_METAL_HOME/tt_metal/soc_descriptors/blackhole_140_arch.yaml ~/sim/soc_descriptor.yaml\nexport TT_METAL_SIMULATOR=~/sim/libttsim_bh.so\nexport TT_METAL_SLOW_DISPATCH_MODE=1\nexport TT_METAL_DISABLE_SFPLOADMACRO=1\nexport TT_METAL_DPRINT_CORES=0,0  # optional kernel output\ncd $TT_METAL_HOME\n./build/programming_examples/metal_example_add_2_integers_in_riscv" /></div>
+          <div className="signal-ledger" aria-label="Blackhole smoke test signal interpretation">
+            {blackholeSignals.map((item) => <article key={item.signal} className={`signal-row ${item.kind}`}><span>{item.label}</span><code>{item.signal}</code><p>{item.meaning}</p></article>)}
+          </div>
+          <div className="verification-proof"><div><span>01</span><p><b>Library loaded.</b> TT-Metal opened a simulation device instead of searching for <code>/dev/tenstorrent</code>.</p></div><div><span>02</span><p><b>Correct architecture.</b> Device ID <code>0xb140</code> identifies the virtual Blackhole target.</p></div><div><span>03</span><p><b>Kernel executed.</b> The BRISC path returned the expected integer result.</p></div><div><span>04</span><p><b>Shutdown completed.</b> UMD closed the device and simulator without a fatal error.</p></div></div>
+          <div className="verification-links"><p><b>Guide correction:</b> DPRINT, multi-ERISC, harvesting and SMC messages above are annotations—not failed assertions. The trailing KHz line is simulator throughput, not a silicon benchmark.</p><a href="./BLACKHOLE_SMOKE_TEST.md">Open the complete test record ↗</a></div>
         </section>
 
         <section className="content-section progress-section">
@@ -471,7 +496,7 @@ function App() {
         </section>
 
         <section id="sources" className="content-section sources-section">
-          <div className="section-heading"><span>07 / Source map</span><h2>Primary sources, not folklore.</h2><p>Commands and constraints were checked against upstream material on 12 August 2026. Follow upstream first when versions change.</p></div>
+          <div className="section-heading"><span>07 / Source map</span><h2>Primary sources, not folklore.</h2><p>Commands, constraints and the verified Blackhole log were checked against upstream material on 16 August 2026. Follow upstream first when versions change.</p></div>
           <div className="source-grid">
             <a href="https://github.com/tenstorrent/ttsim"><span>01</span><div><strong>tenstorrent/ttsim</strong><p>Official source, builds, environment variables and known limitations.</p></div><i>↗</i></a>
             <a href="https://github.com/tenstorrent/ttsim/releases/latest"><span>02</span><div><strong>Latest ttsim release</strong><p>Prebuilt Wormhole, Blackhole and mesh libraries.</p></div><i>↗</i></a>

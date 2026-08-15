@@ -11,6 +11,19 @@ test("builds a GitHub Pages-ready field guide", async () => {
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/);
   await access(new URL("og.png", root));
   await access(new URL("TTSIM_DEBUGGING_PATH.md", root));
+  await access(new URL("BLACKHOLE_SMOKE_TEST.md", root));
+});
+
+test("documents the verified Blackhole smoke test", async () => {
+  const app = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const record = await readFile(new URL("../docs/BLACKHOLE_SMOKE_TEST.md", root), "utf8");
+  assert.match(app, /id="verified"/);
+  assert.match(app, /50a82f83559/);
+  assert.match(app, /device_id=0xb140/);
+  assert.match(app, /Dispatch telemetry SMC buffer unavailable/);
+  assert.match(app, /--build-programming-examples/);
+  assert.match(record, /RESULT: PASS/);
+  assert.match(record, /Success: Result is 21/);
 });
 
 test("includes the layered mechanism debugging guide", async () => {
