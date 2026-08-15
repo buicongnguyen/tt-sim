@@ -30,6 +30,9 @@ Push `main` to `git@github.com:buicongnguyen/tt-sim.git`. The included GitHub Ac
 
 Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 
+- Architecture comparison: <https://buicongnguyen.github.io/tt-sim/#generations>
+- Blackhole versus Huawei Ascend: <https://buicongnguyen.github.io/tt-sim/huawei.html>
+
 ## Repository map
 
 - `src/` — interactive guide
@@ -42,6 +45,11 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `scripts/03-quasar-cluster-lab.sh` — repeatable descriptor audit and Quasar L1 baseline
 - `docs/COMPILER_RUNTIME_CAPSTONE.md` — eight-stage fused-linear compiler/runtime roadmap
 - `experiments/fused-linear-relu/` — MLIR before/after fixtures and deterministic NumPy oracle
+- `docs/ARCHITECTURE_RESEARCH_PLAN.md` — evidence hierarchy, logic review and publication gates
+- `docs/TENSTORRENT_GENERATION_COMPARISON.md` — Wormhole/Blackhole/Quasar code and product comparison
+- `docs/BLACKHOLE_VS_HUAWEI_ASCEND.md` — memory, dataflow, software and scaling comparison
+- `scripts/05-architecture-evidence.sh` — reproducible descriptor and architecture-LLK audit
+- `huawei.html` — dedicated Blackhole versus Huawei Ascend Pages route
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope

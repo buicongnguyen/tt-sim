@@ -27,6 +27,7 @@ const chapterGroups = [
       { id: "verified", number: "02A", title: "Verified Blackhole run", note: "Read the real log" },
       { id: "sequences", number: "02B", title: "Simulation sequences", note: "Blackhole + Quasar" },
       { id: "architecture", number: "02C", title: "Quasar cluster anatomy", note: "Cluster ≠ device mesh" },
+      { id: "generations", number: "02D", title: "Three generations", note: "Code-backed comparison" },
       { id: "experiments", number: "03", title: "Six experiments", note: "Learn by changing" },
       { id: "capstone", number: "03A", title: "Compiler/runtime capstone", note: "Eight experiments" },
     ],
@@ -486,7 +487,7 @@ function App() {
         <button className="chapters-button" type="button" onClick={() => setChaptersOpen(!chaptersOpen)} aria-expanded={chaptersOpen} aria-controls="book-sidebar"><span aria-hidden="true">☰</span> Chapters</button>
         <button className="menu-button" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}>Index</button>
         <nav className={menuOpen ? "topnav open" : "topnav"} aria-label="Primary">
-          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#architecture">Architecture</a><a href="#experiments">Experiments</a><a href="#capstone">Capstone</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
+          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#architecture">Architecture</a><a href="#generations">Generations</a><a href="#experiments">Experiments</a><a href="#capstone">Capstone</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
           <button className="theme-toggle" type="button" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} aria-pressed={theme === "light"} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><span aria-hidden="true">◐</span><small>{theme === "dark" ? "Light" : "Dark"}</small></button>
           <a className="repo-link" href="https://github.com/buicongnguyen/tt-sim">GitHub ↗</a>
         </nav>
@@ -504,7 +505,7 @@ function App() {
           <nav className="chapter-nav" aria-label="Book contents">
             {chapterGroups.map((group) => <div className="chapter-group" key={group.label}><h3>{group.label}</h3>{group.chapters.map((chapter) => <a key={chapter.id} href={`#${chapter.id}`} className={activeChapter === chapter.id ? "active" : ""} aria-current={activeChapter === chapter.id ? "location" : undefined} onClick={() => setChaptersOpen(false)}><span>{chapter.number}</span><div><strong>{chapter.title}</strong><small>{chapter.note}</small></div></a>)}</div>)}
           </nav>
-          <div className="sidebar-shelf"><span>Keep beside the terminal</span><a href="./COMPILER_RUNTIME_CAPSTONE.md">Compiler capstone <i>↗</i></a><a href="./QUASAR_CLUSTER_LAB.md">Quasar cluster lab <i>↗</i></a><a href="./TTSIM_DEBUGGING_PATH.md">Debugging playbook <i>↗</i></a><a href="./TTSIM_READING_PATH.md">Reading path <i>↗</i></a></div>
+          <div className="sidebar-shelf"><span>Keep beside the terminal</span><a href="./huawei.html">Blackhole vs Huawei <i>↗</i></a><a href="./TENSTORRENT_GENERATION_COMPARISON.md">Generation report <i>↗</i></a><a href="./COMPILER_RUNTIME_CAPSTONE.md">Compiler capstone <i>↗</i></a><a href="./QUASAR_CLUSTER_LAB.md">Quasar cluster lab <i>↗</i></a><a href="./TTSIM_DEBUGGING_PATH.md">Debugging playbook <i>↗</i></a></div>
         </aside>
 
         <main>
@@ -668,6 +669,48 @@ function App() {
           </div>
 
           <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/host_api/temp_quasar_api.hpp">Quasar cluster API ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/hal/tt-2xx/quasar/qa_hal_tensix.cpp">Quasar HAL ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/hal/tt-1xx/blackhole/bh_hal_tensix.cpp">Blackhole HAL ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/soc_descriptors/quasar_32_arch.yaml">Quasar descriptor ↗</a><a href="https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/examples/dram_loopback.html">MeshDevice + SRAM model ↗</a></div></div>
+        </section>
+
+        <section id="generations" className="content-section generation-section">
+          <div className="section-heading"><span>02D / Three generations</span><h2>Better is a vector, not a verdict.</h2><p>Shipping-card facts, pinned source and simulator-model evidence answer different questions. This review keeps them separate so a resource count never masquerades as measured speed.</p></div>
+
+          <div className="generation-verdict">
+            <article><span>PROVEN PRODUCT STEP</span><strong>Blackhole raises multiple card-level ceilings.</strong><p>Against the single-chip Wormhole n150, Blackhole p150 has 1.67× enabled Tensix cores and SRAM, 1.78× memory bandwidth and 4.49× matching-format BlockFP8 peak—inside a 1.88× board-power envelope.</p></article>
+            <article className="direction"><span>ARCHITECTURAL DIRECTION</span><strong>Quasar exposes more parallelism inside one target.</strong><p>Eight DMs, four Neo engines × four TRISCs and 4 MiB shared SRAM can improve overlap and reuse <em>if scheduled well</em>. Public evidence does not yet prove performance.</p></article>
+          </div>
+
+          <div className="card-metric-table" role="region" aria-label="Wormhole n150 and Blackhole p150 card metrics" tabIndex={0}>
+            <div className="metric-head"><span>Card fact</span><b>Wormhole n150</b><b>Blackhole p150</b><em>Change</em></div>
+            {[
+              ["Enabled Tensix", "72", "120", "1.67×"],
+              ["AI clock", "1.0 GHz", "1.35 GHz", "1.35×"],
+              ["SRAM", "108 MB", "180 MB", "1.67×"],
+              ["GDDR6", "12 GB", "32 GB", "2.67×"],
+              ["Memory bandwidth", "288 GB/s", "512 GB/s", "1.78×"],
+              ["BlockFP8", "148 TFLOPS", "664 TFLOPS", "4.49×"],
+              ["Board power", "160 W", "300 W", "1.88×"],
+              ["Host interface", "PCIe 4 ×16", "PCIe 5 ×16", "generation"],
+            ].map((row) => <div className="metric-row" key={row[0]}><span>{row[0]}</span><b>{row[1]}</b><b>{row[2]}</b><em>{row[3]}</em></div>)}
+          </div>
+
+          <div className="kernel-evolution" aria-label="Low-level kernel architecture evolution">
+            <article><span>WH</span><div><small>Stable pipeline</small><strong>BRISC + NCRISC</strong><p>TRISC0 unpack → TRISC1 math → TRISC2 pack</p></div></article><i>→</i>
+            <article><span>BH</span><div><small>Wider system + tuned surface</small><strong>Same three TRISC roles</strong><p>More architecture-specific LLKs and an 8-bit-aware pack contract</p></div></article><i>→</i>
+            <article className="hot"><span>QSR</span><div><small>New scheduling unit</small><strong>Worker cluster</strong><p>8 DM + 4 Neo × 4 TRISC around 4 MiB shared SRAM</p></div></article>
+          </div>
+
+          <div className="claim-ledger">
+            <article><span className="evidence-tag product">PRODUCT</span><h3>Why Blackhole improves</h3><p>Higher core/clock/memory ceilings, faster NoC, PCIe 5, much larger card-link capacity and additional integrated RISC-V cores are stated in official product material.</p></article>
+            <article><span className="evidence-tag code">CODE</span><h3>What LLK proves</h3><p>The pinned Blackhole tree adds 28 files absent from Wormhole, including fast tilize, face-compressed matmul, RMSNorm, sampling and top-k paths. That proves software specialization—not speed.</p></article>
+            <article><span className="evidence-tag counter">COUNTEREXAMPLE</span><h3>Newer is not “more everything”</h3><p>Official profiling docs report four Wormhole packer engines but <code>PACK_COUNT=1</code> on Blackhole; Blackhole instead exposes deeper L1 mux visibility.</p></article>
+            <article><span className="evidence-tag unknown">UNKNOWN</span><h3>What Quasar cannot prove</h3><p>Quasar is pre-silicon, binary-only in public ttsim and in early bring-up. No public final-product throughput, power or scaling comparison is defensible.</p></article>
+          </div>
+
+          <div className="generation-guardrail"><span>LOGIC REVIEW</span><p><b>Supported:</b> Blackhole improves named card-level ceilings. <b>Supported as direction:</b> Quasar can expose more internal overlap and shared reuse. <b>Rejected:</b> “Quasar is faster/better than Blackhole” until matching silicon evidence exists.</p></div>
+
+          <div className="generation-actions"><a className="button primary" href="./TENSTORRENT_GENERATION_COMPARISON.md">Read the full source audit</a><a className="button secondary" href="./huawei.html">Compare Blackhole with Huawei Ascend</a></div>
+
+          <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://tenstorrent.com/en/hardware/cards">Blackhole card table ↗</a><a href="https://docs.tenstorrent.com/aibs/wormhole/specifications.html">Wormhole specifications ↗</a><a href="https://github.com/tenstorrent/ttsim">ttsim maturity ↗</a><a href="https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/profiling_ttnn_operations.html">Architecture counters ↗</a><a href="https://github.com/buicongnguyen/tt-sim/blob/main/scripts/05-architecture-evidence.sh">Evidence script ↗</a></div></div>
         </section>
 
         <section className="content-section progress-section">

@@ -15,6 +15,9 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("SIMULATION_SEQUENCE.md", root));
   await access(new URL("QUASAR_CLUSTER_LAB.md", root));
   await access(new URL("COMPILER_RUNTIME_CAPSTONE.md", root));
+  await access(new URL("TENSTORRENT_GENERATION_COMPARISON.md", root));
+  await access(new URL("BLACKHOLE_VS_HUAWEI_ASCEND.md", root));
+  await access(new URL("huawei.html", root));
 });
 
 test("documents the verified Blackhole smoke test", async () => {
@@ -99,6 +102,42 @@ test("publishes the fused linear compiler and runtime capstone", async () => {
   assert.match(input, /"lab\.matmul"/);
   assert.match(expected, /"lab\.fused_linear_relu"/);
   assert.match(oracle, /np\.testing\.assert_allclose/);
+});
+
+test("publishes a guarded Wormhole, Blackhole and Quasar source comparison", async () => {
+  const app = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const report = await readFile(new URL("../docs/TENSTORRENT_GENERATION_COMPARISON.md", root), "utf8");
+  const publishedReport = await readFile(new URL("TENSTORRENT_GENERATION_COMPARISON.md", root), "utf8");
+  const script = await readFile(new URL("../scripts/05-architecture-evidence.sh", root), "utf8");
+  assert.match(app, /id="generations"/);
+  assert.match(app, /Better is a vector, not a verdict/);
+  assert.match(app, /Quasar is pre-silicon, binary-only/);
+  assert.match(app, /PACK_COUNT=1/);
+  assert.match(report, /Quasar is not publicly proven faster than Blackhole/);
+  assert.match(report, /28 Blackhole-only paths/);
+  assert.match(report, /Not supported.*Quasar is already faster/s);
+  assert.match(script, /Blackhole-only vs Wormhole/);
+  assert.match(script, /early bring-up/);
+  assert.equal(publishedReport, report);
+});
+
+test("builds a dedicated Blackhole versus Huawei Ascend page", async () => {
+  const html = await readFile(new URL("huawei.html", root), "utf8");
+  const app = await readFile(new URL("../src/HuaweiApp.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/huawei.css", root), "utf8");
+  const report = await readFile(new URL("../docs/BLACKHOLE_VS_HUAWEI_ASCEND.md", root), "utf8");
+  const publishedReport = await readFile(new URL("BLACKHOLE_VS_HUAWEI_ASCEND.md", root), "utf8");
+  assert.match(html, /Blackhole × Huawei Ascend/);
+  assert.match(html, /(?:src|href)="\.\/assets\//);
+  assert.match(app, /HBM is one axis/);
+  assert.match(app, /not silently assigned to 910B\/910C/);
+  assert.match(app, /144 GB \/ 4 TB\/s HBM/);
+  assert.match(styles, /\.flow-pair/);
+  assert.match(styles, /\.comparison-table/);
+  assert.match(report, /There is no architecture-only winner/);
+  assert.match(report, /future vendor roadmap/);
+  assert.match(report, /32 GB HBM Gen2/);
+  assert.equal(publishedReport, report);
 });
 
 test("provides a book-style chapter sidebar", async () => {
