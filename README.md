@@ -37,6 +37,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `docs/RESEARCH.md` — scope decisions, machine audit and upstream evidence
 - `docs/TTSIM_READING_PATH.md` — curated first-party documentation and suggested reading order
 - `docs/TTSIM_DEBUGGING_PATH.md` — layered host, RISC-V, CB/L1, NoC and simulator debugging playbook
+- `docs/SIMULATION_SEQUENCE.md` — detailed Blackhole and Quasar control/data sequence diagrams
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope

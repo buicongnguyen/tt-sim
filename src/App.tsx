@@ -25,6 +25,7 @@ const chapterGroups = [
     chapters: [
       { id: "setup", number: "02", title: "Deployment plan", note: "Install and verify" },
       { id: "verified", number: "02A", title: "Verified Blackhole run", note: "Read the real log" },
+      { id: "sequences", number: "02B", title: "Simulation sequences", note: "Blackhole + Quasar" },
       { id: "experiments", number: "03", title: "Six experiments", note: "Learn by changing" },
     ],
   },
@@ -55,6 +56,53 @@ const blackholeSignals = [
   { kind: "info", label: "INFO", signal: "JIT cache stats: 0/9 hits", meaning: "The first run compiled nine artifacts. Later identical runs may reuse the cache." },
   { kind: "info", label: "INFO", signal: "[6669] 0.3 seconds (24.6 KHz)", meaning: "Simulator throughput only—never interpret it as Blackhole silicon performance." },
 ] as const;
+
+type SequencePhase = "setup" | "runtime" | "data" | "verify" | "warning";
+type SequenceEvent = {
+  from: number;
+  to: number;
+  title: string;
+  detail: string;
+  phase: SequencePhase;
+};
+
+const blackholeActors = ["WSL Bash", "Host example", "TT-Metal runtime", "UMD + libttsim_bh", "Virtual DRAM / L1", "BRISC RISC-V", "Host verifier"];
+const blackholeSequence: SequenceEvent[] = [
+  { from: 0, to: 1, phase: "setup", title: "Launch the example", detail: "Environment selects libttsim_bh.so, Blackhole descriptor and slow dispatch." },
+  { from: 1, to: 2, phase: "runtime", title: "Create UnitMesh(0)", detail: "The host asks for one logical device and obtains its FIFO mesh command queue." },
+  { from: 2, to: 3, phase: "runtime", title: "Open simulation driver", detail: "TT-Metal chooses UMD's emulation path instead of a physical /dev/tenstorrent device." },
+  { from: 3, to: 2, phase: "verify", title: "Identify virtual Blackhole", detail: "The observed device_id=0xb140 confirms that the Blackhole library and descriptor agree." },
+  { from: 1, to: 4, phase: "data", title: "Allocate six 4-byte buffers", detail: "Three interleaved DRAM buffers plus three L1 staging buffers hold src0, src1 and dst." },
+  { from: 1, to: 2, phase: "data", title: "Enqueue inputs 14 and 7", detail: "Two non-blocking writes enter the same FIFO command queue before the program." },
+  { from: 1, to: 2, phase: "setup", title: "Create BRISC kernel", detail: "RISCV_0 on core (0,0) receives six runtime addresses: DRAM and L1 for both inputs and output." },
+  { from: 2, to: 3, phase: "runtime", title: "JIT + enqueue workload", detail: "Firmware and kernel artifacts are compiled or reused, then slow dispatch submits the program." },
+  { from: 3, to: 5, phase: "runtime", title: "Start BRISC kernel_main", detail: "The simulator advances virtual device state and executes the RISC-V data-movement kernel." },
+  { from: 5, to: 4, phase: "data", title: "NoC read DRAM → L1", detail: "Both four-byte operands move into local L1; noc_async_read_barrier makes them usable." },
+  { from: 4, to: 5, phase: "data", title: "Return operands 14 and 7", detail: "BRISC dereferences the two L1 addresses and performs ordinary RISC-V integer addition." },
+  { from: 5, to: 4, phase: "data", title: "Store 21; publish to DRAM", detail: "load_blocking orders the L1 store, then NoC write plus barrier makes the result visible in DRAM." },
+  { from: 1, to: 2, phase: "verify", title: "Blocking destination read", detail: "FIFO order guarantees the host read executes after the previously enqueued workload finishes." },
+  { from: 4, to: 6, phase: "verify", title: "Return one uint32_t: 21", detail: "The verifier checks vector size == 1 and value == 21." },
+  { from: 6, to: 3, phase: "verify", title: "PASS, then close", detail: "The host prints Success: Result is 21; UMD closes devices and TT-Sim reports throughput." },
+];
+
+const quasarActors = ["WSL Bash", "GoogleTest fixture", "TT-Metal / Metal 2", "UMD + libttsim_qsr", "DM + TRISC firmware", "L1D / L2 / TL1", "Assertion"];
+const quasarSequence: SequenceEvent[] = [
+  { from: 0, to: 1, phase: "setup", title: "Launch one filtered test", detail: "The shell selects libttsim_qsr.so, quasar_32_arch.yaml, slow dispatch and DPRINT core 0,0." },
+  { from: 1, to: 2, phase: "runtime", title: "Request Quasar single-card fixture", detail: "The fixture creates one simulated mesh device because TT_METAL_SIMULATOR is present." },
+  { from: 2, to: 3, phase: "runtime", title: "Open Quasar simulation", detail: "UMD creates TTSimTTDevice; observed device_id=0xfeed distinguishes this pre-silicon target." },
+  { from: 3, to: 2, phase: "runtime", title: "Build 1×1 control plane", detail: "Auto-discovery produces a one-device mesh with no inter-mesh or intra-mesh links." },
+  { from: 2, to: 4, phase: "setup", title: "JIT Quasar artifacts", detail: "A fresh cache compiles seven artifacts with legacy NOC V1 MMIO because NOC_API_V2 is disabled." },
+  { from: 3, to: 4, phase: "runtime", title: "Release firmware from reset", detail: "DM0–DM7 initialize; sixteen TRISC hart IDs initialize across N0–N3." },
+  { from: 4, to: 2, phase: "runtime", title: "Firmware waits for GO", detail: "DM0 reports readiness while TT-Metal finishes constructing the workload and runtime arguments." },
+  { from: 1, to: 5, phase: "data", title: "Seed unreserved L1 with 0", detail: "WriteToDeviceL1 initializes four bytes at the HAL-selected address before kernel execution." },
+  { from: 1, to: 2, phase: "setup", title: "Build ProgramSpec", detail: "simple_l1_write.cpp targets node (0,0), uses two DM threads, and binds address plus value 0x12345678." },
+  { from: 2, to: 4, phase: "runtime", title: "Enqueue blocking workload", detail: "The command queue sends GO; the test waits until device execution completes." },
+  { from: 4, to: 5, phase: "data", title: "CoreLocalMem store", detail: "The DM kernel writes 0x12345678 to the cacheable Quasar L1 address." },
+  { from: 4, to: 5, phase: "data", title: "Flush L2 cache line", detail: "fence → write L2_FLUSH64 MMIO register → fence; dirty data becomes visible in TL1 node memory." },
+  { from: 1, to: 5, phase: "verify", title: "Read four bytes from L1/TL1", detail: "ReadFromDeviceL1 fetches the same address after the blocking workload has completed." },
+  { from: 5, to: 6, phase: "verify", title: "Return 0x12345678", detail: "ASSERT_EQ compares the observed uint32_t with the kernel argument." },
+  { from: 6, to: 3, phase: "verify", title: "PASS, detach, close", detail: "GoogleTest reports one pass in 2329 ms; DPRINT detaches and UMD shuts down cleanly." },
+];
 
 const labs = [
   {
@@ -293,6 +341,60 @@ function Command({ code, label, shell = "Ubuntu" }: CommandProps) {
   );
 }
 
+function SequenceDiagram({ title, actors, events }: { title: string; actors: readonly string[]; events: readonly SequenceEvent[] }) {
+  const width = 1220;
+  const headerHeight = 104;
+  const rowHeight = 84;
+  const height = headerHeight + events.length * rowHeight + 28;
+  const left = 84;
+  const right = width - 84;
+  const actorX = actors.map((_, index) => left + (index * (right - left)) / (actors.length - 1));
+  const markerId = `arrow-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  const summary = events.map((event, index) => `${index + 1}. ${actors[event.from]} to ${actors[event.to]}: ${event.title}. ${event.detail}`).join(" ");
+
+  return (
+    <div className="sequence-scroll">
+      <svg className="sequence-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={`${markerId}-title ${markerId}-desc`}>
+        <title id={`${markerId}-title`}>{title}</title>
+        <desc id={`${markerId}-desc`}>{summary}</desc>
+        <defs>
+          <marker id={markerId} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L8,4 L0,8 z" className="sequence-arrow-head" />
+          </marker>
+        </defs>
+        {events.map((event, index) => <rect key={`row-${index}`} x="0" y={headerHeight + index * rowHeight} width={width} height={rowHeight} className={`sequence-row-bg ${event.phase}`} />)}
+        {actors.map((actor, index) => (
+          <g key={actor}>
+            <line x1={actorX[index]} x2={actorX[index]} y1="76" y2={height - 20} className="sequence-lifeline" />
+            <rect x={actorX[index] - 67} y="15" width="134" height="54" rx="3" className="sequence-actor" />
+            <foreignObject x={actorX[index] - 61} y="21" width="122" height="42">
+              <div className="sequence-actor-label">{actor}</div>
+            </foreignObject>
+          </g>
+        ))}
+        {events.map((event, index) => {
+          const y = headerHeight + index * rowHeight + 43;
+          const x1 = actorX[event.from];
+          const x2 = actorX[event.to];
+          const center = (x1 + x2) / 2;
+          const labelX = Math.max(54, Math.min(width - 318, center - 132));
+          return (
+            <g key={`${event.title}-${index}`} className={`sequence-event ${event.phase}`}>
+              <circle cx="25" cy={y} r="13" className="sequence-step" />
+              <text x="25" y={y + 4} textAnchor="middle" className="sequence-step-label">{index + 1}</text>
+              <line x1={x1} x2={x2} y1={y} y2={y} markerEnd={`url(#${markerId})`} className="sequence-arrow" />
+              <circle cx={x1} cy={y} r="4" className="sequence-origin" />
+              <foreignObject x={labelX} y={y - 34} width="264" height="68">
+                <div className="sequence-message-card"><strong>{event.title}</strong><span>{event.detail}</span></div>
+              </foreignObject>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 function App() {
   const [done, setDone] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(localStorage.getItem("ttsim-progress") ?? "{}"); } catch { return {}; }
@@ -300,6 +402,7 @@ function App() {
   const [activeLab, setActiveLab] = useState(0);
   const [activeDebugLayer, setActiveDebugLayer] = useState(0);
   const [activeDocTrack, setActiveDocTrack] = useState(0);
+  const [activeSequence, setActiveSequence] = useState<"blackhole" | "quasar" | "detour">("blackhole");
   const [menuOpen, setMenuOpen] = useState(false);
   const [chaptersOpen, setChaptersOpen] = useState(false);
   const [activeChapter, setActiveChapter] = useState("top");
@@ -349,7 +452,7 @@ function App() {
         <button className="chapters-button" type="button" onClick={() => setChaptersOpen(!chaptersOpen)} aria-expanded={chaptersOpen} aria-controls="book-sidebar"><span aria-hidden="true">☰</span> Chapters</button>
         <button className="menu-button" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}>Index</button>
         <nav className={menuOpen ? "topnav open" : "topnav"} aria-label="Primary">
-          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#experiments">Experiments</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
+          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#sequences">Sequences</a><a href="#experiments">Experiments</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
           <button className="theme-toggle" type="button" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} aria-pressed={theme === "light"} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><span aria-hidden="true">◐</span><small>{theme === "dark" ? "Light" : "Dark"}</small></button>
           <a className="repo-link" href="https://github.com/buicongnguyen/tt-sim">GitHub ↗</a>
         </nav>
@@ -434,6 +537,45 @@ function App() {
           </div>
           <div className="verification-proof"><div><span>01</span><p><b>Library loaded.</b> TT-Metal opened a simulation device instead of searching for <code>/dev/tenstorrent</code>.</p></div><div><span>02</span><p><b>Correct architecture.</b> Device ID <code>0xb140</code> identifies the virtual Blackhole target.</p></div><div><span>03</span><p><b>Kernel executed.</b> The BRISC path returned the expected integer result.</p></div><div><span>04</span><p><b>Shutdown completed.</b> UMD closed the device and simulator without a fatal error.</p></div></div>
           <div className="verification-links"><p><b>Guide correction:</b> DPRINT, multi-ERISC, harvesting and SMC messages above are annotations—not failed assertions. The trailing KHz line is simulator throughput, not a silicon benchmark.</p><a href="./BLACKHOLE_SMOKE_TEST.md">Open the complete test record ↗</a></div>
+        </section>
+
+        <section id="sequences" className="content-section sequence-section">
+          <div className="section-heading"><span>02B / Simulation sequences</span><h2>Same bridge. Different device mechanisms.</h2><p>Start with the shared host-to-simulator route, then open either verified run. The arrows show control or data movement; they do not represent performance or elapsed time.</p></div>
+
+          <div className="sequence-overview" aria-label="Shared TT-Sim execution pipeline">
+            <div className="overview-track">
+              <article><span>01</span><strong>WSL Bash</strong><small>environment + command</small></article><i>→</i>
+              <article><span>02</span><strong>Host process</strong><small>example or GoogleTest</small></article><i>→</i>
+              <article><span>03</span><strong>TT-Metal</strong><small>mesh + command queue</small></article><i>→</i>
+              <article><span>04</span><strong>UMD</strong><small>simulation driver</small></article><i>→</i>
+              <article className="overview-split"><span>05</span><strong>libttsim</strong><small><b>BH</b> 0xb140 · <b>QSR</b> 0xfeed</small></article><i>→</i>
+              <article><span>06</span><strong>JIT artifacts</strong><small>firmware + kernel</small></article><i>→</i>
+              <article><span>07</span><strong>Virtual cores</strong><small>BRISC or DM/TRISC</small></article><i>→</i>
+              <article><span>08</span><strong>Host verdict</strong><small>21 or 0x12345678</small></article>
+            </div>
+            <div className="overview-legend"><span><i className="legend-control" /> control / lifecycle</span><span><i className="legend-data" /> data visibility</span><span><i className="legend-pass" /> observed proof</span></div>
+          </div>
+
+          <div className="architecture-compare">
+            <article><div><span>BLACKHOLE</span><strong>14 + 7 → 21</strong></div><p>A host example allocates DRAM and L1 buffers, runs one BRISC data-movement kernel, performs two NoC reads, adds in RISC-V, and writes the result back to DRAM.</p><dl><div><dt>Virtual ID</dt><dd>0xb140</dd></div><div><dt>Device worker</dt><dd>RISCV_0 / BRISC</dd></div><div><dt>Proof</dt><dd>Success: Result is 21</dd></div></dl></article>
+            <article><div><span>QUASAR</span><strong>0 → 0x12345678</strong></div><p>A GoogleTest fixture starts Quasar firmware, writes a value through a two-thread DM kernel, flushes the Quasar cache hierarchy to TL1, then reads the same four bytes from the host.</p><dl><div><dt>Virtual ID</dt><dd>0xfeed</dd></div><div><dt>Device workers</dt><dd>DM0–DM7 + TRISCs</dd></div><div><dt>Proof</dt><dd>[ PASSED ] 1 test</dd></div></dl></article>
+          </div>
+
+          <div className="sequence-detail">
+            <div className="sequence-tabs" role="tablist" aria-label="Detailed simulation sequences">
+              <button type="button" role="tab" aria-selected={activeSequence === "blackhole"} className={activeSequence === "blackhole" ? "active" : ""} onClick={() => setActiveSequence("blackhole")}><span>01</span><div><strong>Blackhole success</strong><small>15 messages · BRISC + NoC</small></div></button>
+              <button type="button" role="tab" aria-selected={activeSequence === "quasar"} className={activeSequence === "quasar" ? "active" : ""} onClick={() => setActiveSequence("quasar")}><span>02</span><div><strong>Quasar success</strong><small>15 messages · DM + cache</small></div></button>
+              <button type="button" role="tab" aria-selected={activeSequence === "detour"} className={activeSequence === "detour" ? "active" : ""} onClick={() => setActiveSequence("detour")}><span>03</span><div><strong>Quasar V2 detour</strong><small>failure → supported path</small></div></button>
+            </div>
+
+            <div className="sequence-panel" role="tabpanel">
+              {activeSequence === "blackhole" && <><div className="sequence-panel-head"><div><p className="eyebrow">Verified 16 August 2026</p><h3>Blackhole: host buffers → BRISC → host result</h3></div><span>Read top to bottom</span></div><SequenceDiagram title="Blackhole TT-Sim successful execution sequence" actors={blackholeActors} events={blackholeSequence} /><div className="sequence-takeaway"><b>The ordering hinge:</b> asynchronous host writes, the workload and the blocking read share one FIFO command queue. Inside the kernel, NoC barriers and <code>load_blocking</code> make each memory boundary explicit.</div></>}
+              {activeSequence === "quasar" && <><div className="sequence-panel-head"><div><p className="eyebrow">Verified 16 August 2026</p><h3>Quasar: fixture → DM cache hierarchy → assertion</h3></div><span>Read top to bottom</span></div><SequenceDiagram title="Quasar TT-Sim successful execution sequence" actors={quasarActors} events={quasarSequence} /><div className="quasar-memory-path"><span>DM core store</span><i>→</i><span>private L1D cache</span><i>→</i><span>shared L2 cache</span><i>→</i><span>TL1 node memory</span><i>→</i><span>host read</span><p><code>flush_l2_cache_line(address)</code> performs fence → L2 flush-register write → fence, allowing the host-side read to observe <code>0x12345678</code>.</p></div></>}
+              {activeSequence === "detour" && <div className="detour-panel"><div className="sequence-panel-head"><div><p className="eyebrow">Known simulator boundary</p><h3>Why the first Quasar attempt stopped—and why V1 passed</h3></div><span>Not a WSL failure</span></div><div className="detour-flow"><article><span>DEFAULT SOURCE</span><strong><code>#define NOC_API_V2</code></strong><p>Quasar selects the RoCC custom-instruction command-buffer path.</p></article><i>→</i><article><span>JIT OUTPUT</span><strong><code>tt.rocc.cmdbuf_wr_reg</code></strong><p>Startup programs command buffer 0, register index 32.</p></article><i>→</i><article className="failed"><span>TT-SIM EXIT</span><strong><code>rv64_custom_0</code></strong><p><code>UnimplementedFunctionality</code>: funct3=2, reg_index=32, cmd_buf=0.</p></article></div><div className="detour-branch"><span>SUPPORTED DETOUR</span><div><code>// #define NOC_API_V2</code><i>→</i><code>noc_nonblocking_api_v1.h</code><i>→</i><code>legacy MMIO NOC registers</code><i>→</i><strong>test passes</strong></div><p>The change affects JIT-compiled device firmware and kernels, not the host GoogleTest binary. A fresh <code>TT_METAL_CACHE</code> guarantees that stale V2 artifacts are not reused.</p></div><div className="note danger"><b>Scope:</b> this is a documented bring-up workaround for the current binary-only Quasar simulator. It is not a recommendation to use NOC V1 for production Quasar software.</div></div>}
+            </div>
+          </div>
+
+          <div className="sequence-sources"><span>Trace every arrow</span><div><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/programming_examples/add_2_integers_in_riscv/add_2_integers_in_riscv.cpp">Blackhole host example ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/programming_examples/add_2_integers_in_riscv/kernels/reader_writer_add_in_riscv.cpp">Blackhole BRISC kernel ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tests/tt_metal/tt_metal/test_single_dm_l1_write.cpp">Quasar host test ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tests/tt_metal/tt_metal/test_kernels/dataflow/simple_l1_write.cpp">Quasar DM kernel ↗</a><a href="https://github.com/tenstorrent/ttsim#known-issues">Quasar known issues ↗</a><a href="./SIMULATION_SEQUENCE.md">Mermaid sequence record ↗</a></div></div>
         </section>
 
         <section className="content-section progress-section">

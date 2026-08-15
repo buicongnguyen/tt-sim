@@ -12,6 +12,7 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("og.png", root));
   await access(new URL("TTSIM_DEBUGGING_PATH.md", root));
   await access(new URL("BLACKHOLE_SMOKE_TEST.md", root));
+  await access(new URL("SIMULATION_SEQUENCE.md", root));
 });
 
 test("documents the verified Blackhole smoke test", async () => {
@@ -37,6 +38,23 @@ test("includes the layered mechanism debugging guide", async () => {
   assert.match(guide, /Host C\+\+ is a normal Linux process/);
   assert.match(guide, /BRISC, NCRISC, TRISC0, TRISC1 and TRISC2/);
   assert.match(guide, /TR0.*TR1.*TR2/);
+});
+
+test("documents detailed Blackhole and Quasar simulation sequences", async () => {
+  const app = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/styles.css", root), "utf8");
+  const record = await readFile(new URL("../docs/SIMULATION_SEQUENCE.md", root), "utf8");
+  assert.match(app, /id="sequences"/);
+  assert.match(app, /Blackhole TT-Sim successful execution sequence/);
+  assert.match(app, /Quasar TT-Sim successful execution sequence/);
+  assert.match(app, /rv64_custom_0/);
+  assert.match(app, /0x12345678/);
+  assert.match(styles, /\.sequence-svg/);
+  assert.match(styles, /\.detour-flow/);
+  assert.match(record, /sequenceDiagram/);
+  assert.match(record, /device_id=0xb140/);
+  assert.match(record, /device_id=0xfeed/);
+  assert.match(record, /NOC_API_V2/);
 });
 
 test("provides a book-style chapter sidebar", async () => {
