@@ -14,6 +14,7 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("BLACKHOLE_SMOKE_TEST.md", root));
   await access(new URL("SIMULATION_SEQUENCE.md", root));
   await access(new URL("QUASAR_CLUSTER_LAB.md", root));
+  await access(new URL("COMPILER_RUNTIME_CAPSTONE.md", root));
 });
 
 test("documents the verified Blackhole smoke test", async () => {
@@ -77,6 +78,27 @@ test("explains Quasar clusters and ships a repeatable architecture lab", async (
   assert.match(guide, /two separate passes/);
   assert.match(script, /QuasarMeshDeviceSingleCardFixture\.SingleDmL1Write/);
   assert.match(script, /architecture-report\.md/);
+});
+
+test("publishes the fused linear compiler and runtime capstone", async () => {
+  const app = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/styles.css", root), "utf8");
+  const guide = await readFile(new URL("../docs/COMPILER_RUNTIME_CAPSTONE.md", root), "utf8");
+  const input = await readFile(new URL("../experiments/fused-linear-relu/input.mlir", root), "utf8");
+  const expected = await readFile(new URL("../experiments/fused-linear-relu/expected.mlir", root), "utf8");
+  const oracle = await readFile(new URL("../experiments/fused-linear-relu/oracle.py", root), "utf8");
+  assert.match(app, /id="capstone"/);
+  assert.match(app, /Y = ReLU\(A × B \+ bias\)/);
+  assert.match(app, /const capstoneExperiments/);
+  assert.match(app, /Recommended runtime lane/);
+  assert.match(app, /Pre-silicon bring-up lane/);
+  assert.match(styles, /\.capstone-roadmap/);
+  assert.match(styles, /\.fusion-workbench/);
+  assert.match(guide, /## The eight experiments/);
+  assert.match(guide, /Simulator wall time predicts Blackhole silicon performance/);
+  assert.match(input, /"lab\.matmul"/);
+  assert.match(expected, /"lab\.fused_linear_relu"/);
+  assert.match(oracle, /np\.testing\.assert_allclose/);
 });
 
 test("provides a book-style chapter sidebar", async () => {

@@ -40,6 +40,8 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `docs/SIMULATION_SEQUENCE.md` — detailed Blackhole and Quasar control/data sequence diagrams
 - `docs/QUASAR_CLUSTER_LAB.md` — source-backed Quasar cluster versus Blackhole architecture study
 - `scripts/03-quasar-cluster-lab.sh` — repeatable descriptor audit and Quasar L1 baseline
+- `docs/COMPILER_RUNTIME_CAPSTONE.md` — eight-stage fused-linear compiler/runtime roadmap
+- `experiments/fused-linear-relu/` — MLIR before/after fixtures and deterministic NumPy oracle
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope

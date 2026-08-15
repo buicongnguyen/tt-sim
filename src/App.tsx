@@ -28,6 +28,7 @@ const chapterGroups = [
       { id: "sequences", number: "02B", title: "Simulation sequences", note: "Blackhole + Quasar" },
       { id: "architecture", number: "02C", title: "Quasar cluster anatomy", note: "Cluster ≠ device mesh" },
       { id: "experiments", number: "03", title: "Six experiments", note: "Learn by changing" },
+      { id: "capstone", number: "03A", title: "Compiler/runtime capstone", note: "Eight experiments" },
     ],
   },
   {
@@ -173,6 +174,36 @@ const labs = [
     variation: "Diff the Wormhole and Blackhole SoC descriptors. List three topology differences before moving to architecture-specific kernels.",
   },
 ] as const;
+
+const capstoneExperiments = [
+  { number: "01", title: "DRAM loopback", layer: "Memory + NoC", scope: "Blackhole first", build: "Verified DRAM → L1 → DRAM copy with byte-for-byte host checking.", proof: "A corrupted byte fails; the trace names buffers, sizes and command order." },
+  { number: "02", title: "Compute kernel", layer: "One compute target", scope: "Blackhole / supported Quasar", build: "One-tile elementwise add, then ReLU with negative, zero and positive inputs.", proof: "Every element matches a deterministic host oracle." },
+  { number: "03", title: "Streaming pipeline", layer: "Reader → compute → writer", scope: "Blackhole runtime", build: "Three kernels joined by circular buffers with explicit reserve, wait, push and pop.", proof: "Producer and consumer tile counts balance at every boundary." },
+  { number: "04", title: "Tiling explorer", layer: "Shape + layout", scope: "Target-aware planning", build: "Compare aligned, rectangular and padded M/N shapes without changing the operation.", proof: "Report logical/padded shapes, tile count, bytes moved and local-memory peak." },
+  { number: "05", title: "Runtime executor", layer: "Allocation + dispatch", scope: "Blackhole runtime", build: "Typed buffers, a program-cache key and asynchronous enqueue dependencies.", proof: "The second run reuses the program while updating runtime arguments safely." },
+  { number: "06", title: "MLIR fusion pass", layer: "Graph rewrite", scope: "Offline on any host", build: "Rewrite relu(add_bias(matmul(A, B), bias)) into fused_linear_relu.", proof: "Positive and negative IR tests cover shapes, types, bias and extra users." },
+  { number: "07", title: "Memory planner", layer: "Bufferization", scope: "Offline + target model", build: "Linear-scan allocation from tensor lifetime intervals and target capacity.", proof: "No live buffers overlap; violations report peak bytes and the failed value." },
+  { number: "08", title: "End-to-end compiler", layer: "Complete stack", scope: "Blackhole, then Quasar", build: "Graph → verified IR → fusion → layout → memory plan → Metalium execution.", proof: "One artifact directory proves correctness and counts allocations, dispatches and bytes." },
+] as const;
+
+const capstoneTargets = {
+  blackhole: {
+    label: "Blackhole",
+    eyebrow: "Recommended runtime lane",
+    title: "Exercise the complete host → kernel → oracle loop.",
+    description: "Blackhole ttsim has the broader public execution surface. Start with official Metalium examples, preserve one passing baseline, then replace one mechanism at a time.",
+    gate: "Advance: loopback passes byte-for-byte before adding compute.",
+    command: "cd ~/src/tt-metal\nexport TT_METAL_SIMULATOR=~/sim/libttsim_bh.so\nexport TT_METAL_SLOW_DISPATCH_MODE=1\ncp tt_metal/soc_descriptors/blackhole_140_arch.yaml \\\n  ~/sim/soc_descriptor.yaml\n./build/programming_examples/metal_example_loopback",
+  },
+  quasar: {
+    label: "Quasar",
+    eyebrow: "Pre-silicon bring-up lane",
+    title: "Prove memory and data movement before asking for matmul.",
+    description: "Use the supported single-DM L1 write baseline, then vary byte patterns, addresses and transfer sizes. Keep MLIR fusion and lifetime analysis offline until the required target lowering and runtime features are public.",
+    gate: "Hold: a parsed or fused graph does not prove Quasar device execution.",
+    command: "cd ~/src/tt-metal\nexport TT_METAL_SIMULATOR=~/sim/libttsim_qsr.so\nexport TT_METAL_SLOW_DISPATCH_MODE=1\ncp tt_metal/soc_descriptors/quasar_32_arch.yaml \\\n  ~/sim/soc_descriptor.yaml\n./build/test/tt_metal/unit_tests_legacy \\\n  --gtest_filter=QuasarMeshDeviceSingleCardFixture.SingleDmL1Write",
+  },
+} as const;
 
 const docTracks = [
   {
@@ -404,6 +435,7 @@ function App() {
   const [activeDebugLayer, setActiveDebugLayer] = useState(0);
   const [activeDocTrack, setActiveDocTrack] = useState(0);
   const [activeSequence, setActiveSequence] = useState<"blackhole" | "quasar" | "detour">("blackhole");
+  const [activeCapstoneTarget, setActiveCapstoneTarget] = useState<keyof typeof capstoneTargets>("blackhole");
   const [menuOpen, setMenuOpen] = useState(false);
   const [chaptersOpen, setChaptersOpen] = useState(false);
   const [activeChapter, setActiveChapter] = useState("top");
@@ -444,6 +476,7 @@ function App() {
   }
 
   const lab = labs[activeLab];
+  const capstoneTarget = capstoneTargets[activeCapstoneTarget];
   const debugLayer = debugLayers[activeDebugLayer];
   const docTrack = docTracks[activeDocTrack];
   return (
@@ -453,7 +486,7 @@ function App() {
         <button className="chapters-button" type="button" onClick={() => setChaptersOpen(!chaptersOpen)} aria-expanded={chaptersOpen} aria-controls="book-sidebar"><span aria-hidden="true">☰</span> Chapters</button>
         <button className="menu-button" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}>Index</button>
         <nav className={menuOpen ? "topnav open" : "topnav"} aria-label="Primary">
-          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#architecture">Architecture</a><a href="#experiments">Experiments</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
+          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#architecture">Architecture</a><a href="#experiments">Experiments</a><a href="#capstone">Capstone</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
           <button className="theme-toggle" type="button" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} aria-pressed={theme === "light"} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><span aria-hidden="true">◐</span><small>{theme === "dark" ? "Light" : "Dark"}</small></button>
           <a className="repo-link" href="https://github.com/buicongnguyen/tt-sim">GitHub ↗</a>
         </nav>
@@ -471,7 +504,7 @@ function App() {
           <nav className="chapter-nav" aria-label="Book contents">
             {chapterGroups.map((group) => <div className="chapter-group" key={group.label}><h3>{group.label}</h3>{group.chapters.map((chapter) => <a key={chapter.id} href={`#${chapter.id}`} className={activeChapter === chapter.id ? "active" : ""} aria-current={activeChapter === chapter.id ? "location" : undefined} onClick={() => setChaptersOpen(false)}><span>{chapter.number}</span><div><strong>{chapter.title}</strong><small>{chapter.note}</small></div></a>)}</div>)}
           </nav>
-          <div className="sidebar-shelf"><span>Keep beside the terminal</span><a href="./QUASAR_CLUSTER_LAB.md">Quasar cluster lab <i>↗</i></a><a href="./TTSIM_DEBUGGING_PATH.md">Debugging playbook <i>↗</i></a><a href="./TTSIM_READING_PATH.md">Reading path <i>↗</i></a></div>
+          <div className="sidebar-shelf"><span>Keep beside the terminal</span><a href="./COMPILER_RUNTIME_CAPSTONE.md">Compiler capstone <i>↗</i></a><a href="./QUASAR_CLUSTER_LAB.md">Quasar cluster lab <i>↗</i></a><a href="./TTSIM_DEBUGGING_PATH.md">Debugging playbook <i>↗</i></a><a href="./TTSIM_READING_PATH.md">Reading path <i>↗</i></a></div>
         </aside>
 
         <main>
@@ -481,7 +514,7 @@ function App() {
             <h1>Build a chip lab.<br/><em>Skip the chip.</em></h1>
             <p className="lede">A machine-specific path from Windows to your first Tenstorrent kernel—using the official <code>ttsim</code>, Ubuntu 22.04 on WSL2, and no accelerator hardware.</p>
             <div className="hero-actions"><a className="button primary" href="#setup">Start the setup</a><a className="button secondary" href="#experiments">See the labs</a></div>
-            <div className="hero-meta"><span>6 labs + cluster study</span><span>~60–90 min setup</span><span>Hardware: none</span></div>
+            <div className="hero-meta"><span>6 warm-ups + 8-stage capstone</span><span>~60–90 min setup</span><span>Hardware: none</span></div>
           </div>
           <div className="signal-card" aria-label="Execution path from Windows host to virtual Tenstorrent chip">
             <div className="signal-head"><span>Execution path</span><span className="live-dot">planned</span></div>
@@ -655,6 +688,56 @@ function App() {
               <label className="check lab-check"><input type="checkbox" checked={!!done[lab.id]} onChange={() => toggle(lab.id)} /><span>Experiment complete + notes recorded</span></label>
             </article>
           </div>
+        </section>
+
+        <section id="capstone" className="content-section capstone-section">
+          <div className="section-heading"><span>03A / Compiler + runtime</span><h2>Build one fused graph from bytes to IR.</h2><p>Keep the workload fixed while you climb the stack. Every experiment must leave an artifact that the next layer can consume or verify.</p></div>
+
+          <div className="capstone-hero">
+            <div><p className="eyebrow">The capstone equation</p><strong>Y = ReLU(A × B + bias)</strong><p>Small enough to understand completely; rich enough to exercise tiling, data movement, fusion, lifetime analysis and runtime execution.</p></div>
+            <div className="capstone-flow" aria-label="End-to-end compiler flow"><span>Graph</span><i>→</i><span>MLIR</span><i>→</i><span>Fusion</span><i>→</i><span>Memory plan</span><i>→</i><span>Metalium</span><i>→</i><span>Oracle</span></div>
+          </div>
+
+          <div className="capstone-boundary"><span>SUPPORT BOUNDARY</span><p><b>Blackhole is the runtime learning lane.</b> <b>Quasar is the current bring-up lane.</b> MLIR parsing, verification, fusion and lifetime analysis are target-independent and can run offline. Simulator wall time is never a silicon benchmark.</p></div>
+
+          <div className="capstone-roadmap" aria-label="Eight compiler and runtime experiments">
+            {capstoneExperiments.map((item) => <article key={item.number}>
+              <div className="capstone-card-head"><span>{item.number}</span><small>{item.layer}</small></div>
+              <h3>{item.title}</h3><em>{item.scope}</em><p>{item.build}</p>
+              <div><small>Exit proof</small><p>{item.proof}</p></div>
+              <label className="check"><input type="checkbox" checked={!!done[`capstone-${item.number}`]} onChange={() => toggle(`capstone-${item.number}`)} /><span>Evidence saved</span></label>
+            </article>)}
+          </div>
+
+          <div className="target-workbench">
+            <div className="target-tabs" role="tablist" aria-label="Capstone target lanes">
+              {(Object.keys(capstoneTargets) as Array<keyof typeof capstoneTargets>).map((target) => <button key={target} type="button" role="tab" aria-selected={activeCapstoneTarget === target} className={activeCapstoneTarget === target ? "active" : ""} onClick={() => setActiveCapstoneTarget(target)}><span>{target === "blackhole" ? "BH" : "QSR"}</span><strong>{capstoneTargets[target].label}</strong></button>)}
+            </div>
+            <article className="target-panel" role="tabpanel">
+              <div><p className="eyebrow">{capstoneTarget.eyebrow}</p><h3>{capstoneTarget.title}</h3><p>{capstoneTarget.description}</p></div>
+              <Command code={capstoneTarget.command} label={`${capstoneTarget.label} baseline · WSL Ubuntu`} />
+              <p className="target-gate">{capstoneTarget.gate}</p>
+            </article>
+          </div>
+
+          <div className="fusion-workbench">
+            <div className="fusion-copy"><p className="eyebrow">Experiment 06 · first compiler pass</p><h3>Recognize the DAG, then earn the fusion.</h3><p>Start with generic quoted operations, define a real dialect, then implement a rewrite pattern. Reject invalid dimensions, types, bias shapes and unsafe extra uses before replacing the graph.</p><a href="https://github.com/buicongnguyen/tt-sim/tree/main/experiments/fused-linear-relu">Open the starter fixtures on GitHub ↗</a></div>
+            <div className="fusion-ir">
+              <div><span>BEFORE · 3 OPS</span><code>matmul(A, B)</code><i>↓</i><code>add_bias(…, bias)</code><i>↓</i><code>relu(…)</code></div>
+              <b>→</b>
+              <div className="fused"><span>AFTER · 1 OP</span><code>fused_linear_relu(A, B, bias)</code><small>Only after verification succeeds</small></div>
+            </div>
+          </div>
+
+          <div className="capstone-acceptance">
+            <article><span>01</span><h3>Numerical gate</h3><p>Fixed-seed NumPy oracle; valid and invalid shapes; identical logical outputs before and after fusion.</p></article>
+            <article><span>02</span><h3>Resource gate</h3><p>Machine-readable logical/padded shapes, allocated bytes, lifetime intervals and local-memory high-water mark.</p></article>
+            <article><span>03</span><h3>Runtime gate</h3><p>Trace writes, dispatches and reads. Count reductions only after the implementation produces them.</p></article>
+          </div>
+
+          <div className="capstone-download"><div><p className="eyebrow">Repeat the complete study</p><h3>Commands, exit gates, fixtures and portfolio checklist.</h3></div><a href="./COMPILER_RUNTIME_CAPSTONE.md">Open the standalone capstone guide ↗</a></div>
+
+          <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://github.com/tenstorrent/tt-metal/blob/main/METALIUM_GUIDE.md">Metalium guide ↗</a><a href="https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/examples/dram_loopback.html">DRAM loopback ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/overview.html">TT-MLIR architecture ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/tools.html">ttmlir-opt tools ↗</a><a href="https://mlir.llvm.org/docs/PatternRewriter/">MLIR rewriting ↗</a></div></div>
         </section>
 
         <section id="debug" className="content-section debug-section">
