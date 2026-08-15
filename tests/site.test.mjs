@@ -13,6 +13,7 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("TTSIM_DEBUGGING_PATH.md", root));
   await access(new URL("BLACKHOLE_SMOKE_TEST.md", root));
   await access(new URL("SIMULATION_SEQUENCE.md", root));
+  await access(new URL("QUASAR_CLUSTER_LAB.md", root));
 });
 
 test("documents the verified Blackhole smoke test", async () => {
@@ -55,6 +56,27 @@ test("documents detailed Blackhole and Quasar simulation sequences", async () =>
   assert.match(record, /device_id=0xb140/);
   assert.match(record, /device_id=0xfeed/);
   assert.match(record, /NOC_API_V2/);
+});
+
+test("explains Quasar clusters and ships a repeatable architecture lab", async () => {
+  const app = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/styles.css", root), "utf8");
+  const guide = await readFile(new URL("../docs/QUASAR_CLUSTER_LAB.md", root), "utf8");
+  const script = await readFile(new URL("../scripts/03-quasar-cluster-lab.sh", root), "utf8");
+  assert.match(app, /id="architecture"/);
+  assert.match(app, /Quasar is cluster-oriented/);
+  assert.match(app, /8 DM cores/);
+  assert.match(app, /4 Tensix Neo engines/);
+  assert.match(app, /4 MiB shared SRAM/);
+  assert.match(app, /DM0–DM1 are reserved/);
+  assert.match(app, /8×4 rectangle/);
+  assert.match(app, /MeshDevice/);
+  assert.match(styles, /\.cluster-anatomy/);
+  assert.match(styles, /\.architecture-table/);
+  assert.match(guide, /cluster-oriented inside the chip/);
+  assert.match(guide, /two separate passes/);
+  assert.match(script, /QuasarMeshDeviceSingleCardFixture\.SingleDmL1Write/);
+  assert.match(script, /architecture-report\.md/);
 });
 
 test("provides a book-style chapter sidebar", async () => {

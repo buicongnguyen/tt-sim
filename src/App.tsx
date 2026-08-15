@@ -26,6 +26,7 @@ const chapterGroups = [
       { id: "setup", number: "02", title: "Deployment plan", note: "Install and verify" },
       { id: "verified", number: "02A", title: "Verified Blackhole run", note: "Read the real log" },
       { id: "sequences", number: "02B", title: "Simulation sequences", note: "Blackhole + Quasar" },
+      { id: "architecture", number: "02C", title: "Quasar cluster anatomy", note: "Cluster ≠ device mesh" },
       { id: "experiments", number: "03", title: "Six experiments", note: "Learn by changing" },
     ],
   },
@@ -452,7 +453,7 @@ function App() {
         <button className="chapters-button" type="button" onClick={() => setChaptersOpen(!chaptersOpen)} aria-expanded={chaptersOpen} aria-controls="book-sidebar"><span aria-hidden="true">☰</span> Chapters</button>
         <button className="menu-button" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}>Index</button>
         <nav className={menuOpen ? "topnav open" : "topnav"} aria-label="Primary">
-          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#sequences">Sequences</a><a href="#experiments">Experiments</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
+          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#architecture">Architecture</a><a href="#experiments">Experiments</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
           <button className="theme-toggle" type="button" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} aria-pressed={theme === "light"} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><span aria-hidden="true">◐</span><small>{theme === "dark" ? "Light" : "Dark"}</small></button>
           <a className="repo-link" href="https://github.com/buicongnguyen/tt-sim">GitHub ↗</a>
         </nav>
@@ -470,7 +471,7 @@ function App() {
           <nav className="chapter-nav" aria-label="Book contents">
             {chapterGroups.map((group) => <div className="chapter-group" key={group.label}><h3>{group.label}</h3>{group.chapters.map((chapter) => <a key={chapter.id} href={`#${chapter.id}`} className={activeChapter === chapter.id ? "active" : ""} aria-current={activeChapter === chapter.id ? "location" : undefined} onClick={() => setChaptersOpen(false)}><span>{chapter.number}</span><div><strong>{chapter.title}</strong><small>{chapter.note}</small></div></a>)}</div>)}
           </nav>
-          <div className="sidebar-shelf"><span>Keep beside the terminal</span><a href="./TTSIM_DEBUGGING_PATH.md">Debugging playbook <i>↗</i></a><a href="./TTSIM_READING_PATH.md">Reading path <i>↗</i></a></div>
+          <div className="sidebar-shelf"><span>Keep beside the terminal</span><a href="./QUASAR_CLUSTER_LAB.md">Quasar cluster lab <i>↗</i></a><a href="./TTSIM_DEBUGGING_PATH.md">Debugging playbook <i>↗</i></a><a href="./TTSIM_READING_PATH.md">Reading path <i>↗</i></a></div>
         </aside>
 
         <main>
@@ -480,7 +481,7 @@ function App() {
             <h1>Build a chip lab.<br/><em>Skip the chip.</em></h1>
             <p className="lede">A machine-specific path from Windows to your first Tenstorrent kernel—using the official <code>ttsim</code>, Ubuntu 22.04 on WSL2, and no accelerator hardware.</p>
             <div className="hero-actions"><a className="button primary" href="#setup">Start the setup</a><a className="button secondary" href="#experiments">See the labs</a></div>
-            <div className="hero-meta"><span>6 focused experiments</span><span>~60–90 min setup</span><span>Hardware: none</span></div>
+            <div className="hero-meta"><span>6 labs + cluster study</span><span>~60–90 min setup</span><span>Hardware: none</span></div>
           </div>
           <div className="signal-card" aria-label="Execution path from Windows host to virtual Tenstorrent chip">
             <div className="signal-head"><span>Execution path</span><span className="live-dot">planned</span></div>
@@ -520,7 +521,7 @@ function App() {
           <div className="steps">
             <article className="step"><div className="step-index">A</div><div className="step-body"><p className="eyebrow">Preflight · 5 min</p><h3>Prepare Ubuntu and basic build tools</h3><p>Update packages and install the small toolchain needed before Tenstorrent’s own dependency script takes over.</p><Command code="sudo apt update\nsudo apt install -y build-essential git git-lfs cmake ninja-build python3-venv wget ccache\ngit lfs install\nmkdir -p ~/src ~/sim" /><label className="check"><input type="checkbox" checked={!!done["m-tools"]} onChange={() => toggle("m-tools")} /><span>Prerequisites installed</span></label></div></article>
             <article className="step"><div className="step-index">B</div><div className="step-body"><p className="eyebrow">TT-Metalium · 30–60+ min</p><h3>Clone with SSH, then build from source</h3><p>The source path is required for kernel examples. This machine’s GitHub SSH key is already authenticated as <code>buicongnguyen</code>. Limit parallel compilation because WSL exposes 28 CPUs but has 15 GiB RAM.</p><Command code="cd ~/src\ngit clone --recurse-submodules git@github.com:tenstorrent/tt-metal.git\ncd tt-metal\nsudo ./install_dependencies.sh\nCMAKE_BUILD_PARALLEL_LEVEL=8 ./build_metal.sh \\\n  --enable-ccache \\\n  --build-programming-examples \\\n  --without-distributed\nexport TT_METAL_HOME=$PWD" /><div className="note"><b>Checkpoint:</b> stay on one TT-Metal commit while learning. Record <code>git rev-parse HEAD</code> in your lab notes so results are reproducible. If compilation is killed for memory pressure, repeat with <code>CMAKE_BUILD_PARALLEL_LEVEL=4</code>.</div><label className="check"><input type="checkbox" checked={!!done["m-metal"]} onChange={() => toggle("m-metal")} /><span>TT-Metalium build completed</span></label></div></article>
-            <article className="step"><div className="step-index">C</div><div className="step-body"><p className="eyebrow">ttsim · 5 min</p><h3>Stage the official simulator libraries</h3><p>Version <code>v1.10.0</code> was the latest release at research time. Pin it for reproducibility; if TT-Metal reports an ABI mismatch, use the simulator version required by that TT-Metal revision.</p><Command code="cd ~/sim\nTTSIM_VERSION=v1.10.0\nwget https://github.com/tenstorrent/ttsim/releases/download/${TTSIM_VERSION}/libttsim_wh.so\nwget https://github.com/tenstorrent/ttsim/releases/download/${TTSIM_VERSION}/libttsim_bh.so\ncp $TT_METAL_HOME/tt_metal/soc_descriptors/wormhole_b0_80_arch.yaml soc_descriptor.yaml\nfile libttsim_wh.so" /><label className="check"><input type="checkbox" checked={!!done["m-sim"]} onChange={() => toggle("m-sim")} /><span>Simulator libraries staged</span></label></div></article>
+            <article className="step"><div className="step-index">C</div><div className="step-body"><p className="eyebrow">ttsim · 5 min</p><h3>Stage the official simulator libraries</h3><p>Version <code>v1.10.1</code> is the pinned research baseline. Pin it for reproducibility; if TT-Metal reports an ABI mismatch, use the simulator version required by that TT-Metal revision.</p><Command code="cd ~/sim\nTTSIM_VERSION=v1.10.1\nwget https://github.com/tenstorrent/ttsim/releases/download/${TTSIM_VERSION}/libttsim_wh.so\nwget https://github.com/tenstorrent/ttsim/releases/download/${TTSIM_VERSION}/libttsim_bh.so\nwget https://github.com/tenstorrent/ttsim/releases/download/${TTSIM_VERSION}/libttsim_qsr.so\ncp $TT_METAL_HOME/tt_metal/soc_descriptors/wormhole_b0_80_arch.yaml soc_descriptor.yaml\nsha256sum libttsim_qsr.so" /><label className="check"><input type="checkbox" checked={!!done["m-sim"]} onChange={() => toggle("m-sim")} /><span>Simulator libraries staged</span></label></div></article>
             <article className="step"><div className="step-index">D</div><div className="step-body"><p className="eyebrow">Activate + verify · 5 min</p><h3>Route TT-Metal into virtual Wormhole</h3><p>Slow dispatch is the recommended simulator path. SFPLOADMACRO is not supported, so disable it before running kernels.</p><Command code="export TT_METAL_SIMULATOR=~/sim/libttsim_wh.so\nexport TT_METAL_SLOW_DISPATCH_MODE=1\nexport TT_METAL_DISABLE_SFPLOADMACRO=1\ncd $TT_METAL_HOME\n./build/programming_examples/metal_example_add_2_integers_in_riscv" /><div className="expected"><small>Expected terminal signal</small><code>Success: Result is 21</code></div><label className="check"><input type="checkbox" checked={!!done["m-smoke"]} onChange={() => toggle("m-smoke")} /><span>Smoke test returned 21</span></label></div></article>
           </div>
         </section>
@@ -578,6 +579,64 @@ function App() {
           <div className="sequence-sources"><span>Trace every arrow</span><div><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/programming_examples/add_2_integers_in_riscv/add_2_integers_in_riscv.cpp">Blackhole host example ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/programming_examples/add_2_integers_in_riscv/kernels/reader_writer_add_in_riscv.cpp">Blackhole BRISC kernel ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tests/tt_metal/tt_metal/test_single_dm_l1_write.cpp">Quasar host test ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tests/tt_metal/tt_metal/test_kernels/dataflow/simple_l1_write.cpp">Quasar DM kernel ↗</a><a href="https://github.com/tenstorrent/ttsim#known-issues">Quasar known issues ↗</a><a href="./SIMULATION_SEQUENCE.md">Mermaid sequence record ↗</a></div></div>
         </section>
 
+        <section id="architecture" className="content-section architecture-section">
+          <div className="section-heading"><span>02C / Architecture study</span><h2>Yes: Quasar targets clusters. No: that is not the device mesh.</h2><p>Public Quasar APIs introduce an on-chip worker cluster as the unit that host code targets. TT-Metal’s <code>MeshDevice</code> sits above the chip and applies to Blackhole too—even one device is represented as a 1×1 mesh.</p></div>
+
+          <div className="cluster-verdict">
+            <div><span>THE PRECISE ANSWER</span><strong>Quasar is cluster-oriented <em>inside each chip.</em></strong></div>
+            <p>One current Quasar worker cluster contains <b>8 DM cores</b>, <b>4 Tensix Neo engines × 4 TRISCs</b>, and <b>4 MiB shared SRAM</b>. DM0–DM1 are reserved on worker clusters, so user data-movement kernels currently receive up to six DM cores. One compute kernel may occupy one to four Neo engines.</p>
+          </div>
+
+          <div className="cluster-levels" aria-label="Three different architecture levels that are often called a cluster">
+            <article><span>LEVEL 03</span><strong>System mesh</strong><p>One or more chips. TT-Metal models even one chip as a 1×1 <code>MeshDevice</code>.</p><small>Quasar and Blackhole</small></article>
+            <i>contains</i>
+            <article><span>LEVEL 02</span><strong>On-chip NoC grid</strong><p>The current QSR simulator exposes an 8×4 rectangle of 32 functional worker nodes.</p><small>Simulator descriptor</small></article>
+            <i>contains</i>
+            <article className="hot"><span>LEVEL 01</span><strong>Quasar worker cluster</strong><p>One NoC-addressed target with data-movement and compute parallelism inside it.</p><small>Kernel target</small></article>
+          </div>
+
+          <div className="cluster-anatomy">
+            <div className="cluster-anatomy-head"><div><p className="eyebrow">One Quasar worker cluster</p><h3>Parallelism exists both across clusters and within one cluster.</h3></div><span>Shared address space · 4 MiB</span></div>
+            <div className="cluster-hardware">
+              <div className="dm-bank"><small>Data movement</small><strong>8 × DM</strong><div>{Array.from({length: 8}, (_, index) => <span key={index} className={index < 2 ? "reserved" : "user"}>DM{index}<i>{index < 2 ? "runtime" : "user"}</i></span>)}</div></div>
+              <div className="shared-sram"><span>shared</span><strong>4 MiB SRAM</strong><small>all DM cores + Neo engines</small></div>
+              <div className="neo-bank"><small>Compute</small><strong>4 × Tensix Neo</strong><div>{Array.from({length: 4}, (_, engine) => <article key={engine}><b>NEO {engine}</b><span>TR0</span><span>TR1</span><span>TR2</span><span>TR3</span></article>)}</div></div>
+            </div>
+          </div>
+
+          <div className="architecture-table-wrap">
+            <table className="architecture-table">
+              <caption>Current public software model—not a final Quasar silicon specification</caption>
+              <thead><tr><th>Compiler/runtime concern</th><th>Quasar</th><th>Blackhole</th><th>Evidence</th></tr></thead>
+              <tbody>
+                <tr><th>Host scheduling target</th><td>Worker cluster</td><td>Tensix worker core</td><td>Host API / HAL</td></tr>
+                <tr><th>DM resources per target</th><td>8 DM; 6 user-available</td><td>BRISC + NCRISC</td><td>Host API / HAL</td></tr>
+                <tr><th>Compute resources</th><td>4 Neo × 4 TRISCs</td><td>TRISC0–2</td><td>HAL</td></tr>
+                <tr><th>Shared worker SRAM</th><td>4 MiB</td><td>1.5 MiB</td><td>Simulator descriptor</td></tr>
+                <tr><th>Functional workers</th><td>32 · 8×4 rectangle</td><td>140 unharvested</td><td>Simulator descriptor</td></tr>
+                <tr><th>NoC coordinate extent</th><td>10×8</td><td>17×12</td><td>Simulator descriptor</td></tr>
+                <tr><th>Local-memory contract</th><td>DM caches → L2 → TL1 visibility</td><td>Explicit SRAM scratchpad</td><td>Tests / Metalium docs</td></tr>
+                <tr><th>Public simulator status</th><td>Early bring-up · binary-only</td><td>Near feature complete · source</td><td>ttsim README</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="compiler-consequences">
+            <article><span>01</span><h3>Schedule two levels</h3><p>First place work over the 8×4 cluster grid; then choose DM threads and Neo engines inside each selected cluster.</p></article>
+            <article><span>02</span><h3>Lower capabilities, not names</h3><p>Keep fusion target-independent. Add SRAM size, engine count and legal memory effects only during architecture lowering.</p></article>
+            <article><span>03</span><h3>Model visibility</h3><p>A Quasar DM store is not automatically host-visible. Make cache flushes and dependencies explicit in runtime IR.</p></article>
+            <article><span>04</span><h3>Validate resource legality</h3><p>Reject seven user DMs, five Neo engines or two compute kernels assigned to the same cluster.</p></article>
+          </div>
+
+          <div className="repeat-lab">
+            <div><p className="eyebrow">Repeatable evidence lab</p><h3>Audit first. Run second. Keep every artifact.</h3><p>The checked-in script compares both descriptors, records the exact TT-Metal commit and simulator checksum, then optionally runs the supported Quasar single-DM L1 write test with an isolated JIT cache.</p></div>
+            <Command label="Run from the cloned tt-sim guide in WSL" code="export TT_METAL_HOME=~/src/tt-metal\nexport TT_METAL_SIMULATOR=~/sim/libttsim_qsr.so\nchmod +x scripts/03-quasar-cluster-lab.sh\n./scripts/03-quasar-cluster-lab.sh inspect\n./scripts/03-quasar-cluster-lab.sh run" />
+            <div className="repeat-links"><a href="./QUASAR_CLUSTER_LAB.md">Open the full lab record ↗</a><a href="https://github.com/buicongnguyen/tt-sim/blob/main/scripts/03-quasar-cluster-lab.sh">Inspect the script ↗</a></div>
+          </div>
+
+          <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/host_api/temp_quasar_api.hpp">Quasar cluster API ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/hal/tt-2xx/quasar/qa_hal_tensix.cpp">Quasar HAL ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/hal/tt-1xx/blackhole/bh_hal_tensix.cpp">Blackhole HAL ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/soc_descriptors/quasar_32_arch.yaml">Quasar descriptor ↗</a><a href="https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/examples/dram_loopback.html">MeshDevice + SRAM model ↗</a></div></div>
+        </section>
+
         <section className="content-section progress-section">
           <div className="progress-card"><div><p className="eyebrow">Local progress</p><strong>{progress}%</strong><span>{complete} of {milestones.length} milestones</span></div><div className="progress-track"><i style={{width: `${progress}%`}} /></div><div className="milestone-list">{milestones.map(([id, text]) => <label key={id} className="check"><input type="checkbox" checked={!!done[id]} onChange={() => toggle(id)} /><span>{text}</span></label>)}</div><button type="button" className="reset" onClick={() => setDone({})}>Reset progress</button></div>
           <div className="rules"><p className="eyebrow">Lab discipline</p><h3>Change one thing.</h3><ol><li>Write a prediction before the run.</li><li>Capture the exact commit, simulator version and command.</li><li>Change one variable only.</li><li>Compare output—not wall-clock speed.</li><li>Explain the result in your own words.</li></ol><div className="note danger"><b>Do not benchmark ttsim.</b> It is a correctness and learning model, not a silicon performance model.</div></div>
@@ -616,7 +675,7 @@ function App() {
 
         <section id="notebook" className="content-section notebook-section">
           <div className="section-heading"><span>05 / Evidence</span><h2>Keep a lab notebook Git can diff.</h2><p>One Markdown file per experiment is enough. The template forces the useful details without turning learning into paperwork.</p></div>
-          <Command label="notes/01-riscv-smoke.md" code="# Experiment 01 — virtual BRISC\n\n- Date:\n- TT-Metal commit: `git rev-parse HEAD`\n- ttsim version: v1.10.0\n- Architecture: Wormhole\n- Hypothesis:\n- Command:\n- Observed output:\n- One controlled change:\n- Result vs prediction:\n- What I think happened:\n- Next question:" />
+          <Command label="notes/01-riscv-smoke.md" code="# Experiment 01 — virtual BRISC\n\n- Date:\n- TT-Metal commit: `git rev-parse HEAD`\n- ttsim version: v1.10.1\n- Architecture: Wormhole\n- Hypothesis:\n- Command:\n- Observed output:\n- One controlled change:\n- Result vs prediction:\n- What I think happened:\n- Next question:" />
           <label className="check"><input type="checkbox" checked={!!done["m-notes"]} onChange={() => toggle("m-notes")} /><span>First lab note committed</span></label>
         </section>
 
@@ -649,7 +708,7 @@ function App() {
         </section>
         </main>
       </div>
-      <footer><a className="brand" href="#top"><span>TT</span><i>•</i>SIM LAB</a><p>Independent learning guide. Tenstorrent, Wormhole and Blackhole are referenced for educational purposes.</p><a href="https://github.com/buicongnguyen/tt-sim">Page source on GitHub ↗</a></footer>
+      <footer><a className="brand" href="#top"><span>TT</span><i>•</i>SIM LAB</a><p>Independent learning guide. Tenstorrent, Wormhole, Blackhole and Quasar are referenced for educational purposes.</p><a href="https://github.com/buicongnguyen/tt-sim">Page source on GitHub ↗</a></footer>
     </div>
   );
 }

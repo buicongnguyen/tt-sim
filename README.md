@@ -38,10 +38,12 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `docs/TTSIM_READING_PATH.md` — curated first-party documentation and suggested reading order
 - `docs/TTSIM_DEBUGGING_PATH.md` — layered host, RISC-V, CB/L1, NoC and simulator debugging playbook
 - `docs/SIMULATION_SEQUENCE.md` — detailed Blackhole and Quasar control/data sequence diagrams
+- `docs/QUASAR_CLUSTER_LAB.md` — source-backed Quasar cluster versus Blackhole architecture study
+- `scripts/03-quasar-cluster-lab.sh` — repeatable descriptor audit and Quasar L1 baseline
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope
 
 This guide focuses on `tenstorrent/ttsim`, Tenstorrent's official C++ simulator shared library. It explicitly distinguishes the separate community Python project [`mesham/tt-sim`](https://github.com/mesham/tt-sim).
 
-Tenstorrent, TT-Metalium, Wormhole and Blackhole are referenced for educational purposes. This repository is an independent learning guide.
+Tenstorrent, TT-Metalium, Wormhole, Blackhole and Quasar are referenced for educational purposes. This repository is an independent learning guide.

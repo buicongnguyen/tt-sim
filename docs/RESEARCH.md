@@ -44,7 +44,7 @@ Read-only checks found:
 
 ## Compatibility policy
 
-The website pins ttsim `v1.10.0`, the latest GitHub release observed on the research date. TT-Metalium and the simulator share an API/ABI; a moving TT-Metal `main` checkout may require a different simulator release. Record both versions, avoid upgrading one component mid-lab, and follow the version required by the chosen TT-Metal revision if an ABI mismatch is reported.
+The website pins ttsim `v1.10.1`, the latest GitHub release observed on 16 August 2026. TT-Metalium and the simulator share an API/ABI; a moving TT-Metal `main` checkout may require a different simulator release. Record both versions, avoid upgrading one component mid-lab, and follow the version required by the chosen TT-Metal revision if an ABI mismatch is reported.
 
 ## Upstream evidence
 
