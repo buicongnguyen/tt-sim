@@ -35,14 +35,26 @@ test("documents the verified Blackhole smoke test", async () => {
 test("includes the layered mechanism debugging guide", async () => {
   const app = await readFile(new URL("../src/App.tsx", root), "utf8");
   const guide = await readFile(new URL("../docs/TTSIM_DEBUGGING_PATH.md", root), "utf8");
+  const publishedGuide = await readFile(new URL("TTSIM_DEBUGGING_PATH.md", root), "utf8");
+  const launch = await readFile(new URL("../examples/vscode/launch.json", root), "utf8");
   assert.match(app, /id="debug"/);
   assert.match(app, /Follow one value through the machine/);
   assert.match(app, /Read and follow/);
   assert.match(app, /Single-core matmul debugging lab/);
   assert.match(app, /Compute engines and Tensix data flow/);
+  assert.match(app, /gdb: command not found/);
+  assert.match(app, /BH VERIFIED/);
+  assert.match(app, /two header lines and no TEST-FULL zones/);
   assert.match(guide, /Host C\+\+ is a normal Linux process/);
   assert.match(guide, /BRISC, NCRISC, TRISC0, TRISC1 and TRISC2/);
   assert.match(guide, /TR0.*TR1.*TR2/);
+  assert.match(guide, /UnimplementedFunctionality: rv64_custom_0: funct3=2/);
+  assert.match(guide, /tt::watcher::dump\(stderr, true\)/);
+  assert.match(guide, /only 125 scopes per core/);
+  assert.match(guide, /CSV contained only/);
+  assert.match(launch, /build-debug\/test\/tt_metal\/unit_tests_legacy/);
+  assert.match(launch, /libttsim_qsr\.so/);
+  assert.equal(publishedGuide, guide);
 });
 
 test("documents detailed Blackhole and Quasar simulation sequences", async () => {

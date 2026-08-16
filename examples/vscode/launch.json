@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Quasar ttsim — SingleDmL1Write host",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build-debug/test/tt_metal/unit_tests_legacy",
+      "args": [
+        "--gtest_filter=QuasarMeshDeviceSingleCardFixture.SingleDmL1Write"
+      ],
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "stopAtEntry": true,
+      "externalConsole": false,
+      "environment": [
+        {
+          "name": "TT_METAL_HOME",
+          "value": "/home/n/src/tt-metal"
+        },
+        {
+          "name": "TT_METAL_SIMULATOR",
+          "value": "/home/n/sim/libttsim_qsr.so"
+        },
+        {
+          "name": "TT_METAL_SLOW_DISPATCH_MODE",
+          "value": "1"
+        }
+      ],
+      "setupCommands": [
+        {
+          "description": "Enable GDB pretty printing",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}

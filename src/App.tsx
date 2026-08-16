@@ -261,6 +261,30 @@ const docTracks = [
   },
 ] as const;
 
+const observabilityStatus = [
+  {
+    tone: "repair",
+    badge: "FIX FIRST",
+    title: "VS Code + GDB",
+    evidence: "Ubuntu reports “gdb: command not found”. The active TT-Metal build is Release and has no DWARF line tables.",
+    next: "Install GDB inside WSL and build tests into build-debug before setting host breakpoints.",
+  },
+  {
+    tone: "verified",
+    badge: "BH VERIFIED",
+    title: "Watcher",
+    evidence: "Blackhole attached, polled, wrote watcher.log and returned 21. Quasar stops at an unimplemented rv64_custom_0 instruction.",
+    next: "Practice waypoints and hang diagnosis on Blackhole; keep Quasar on DPRINT for this pinned pair.",
+  },
+  {
+    tone: "partial",
+    badge: "PARTIAL",
+    title: "Device Profiler",
+    evidence: "Blackhole test_full_buffer passed, but profile_log_device.csv held two header lines and no TEST-FULL zones.",
+    next: "Use Tracy for the ttsim host timeline; re-test device scopes on hardware or after upgrading the pair.",
+  },
+] as const;
+
 const debugLayers = [
   {
     number: "01",
@@ -268,9 +292,9 @@ const debugLayers = [
     processor: "Host C++ · before dispatch",
     tool: "GDB + Inspector",
     question: "Were buffers, kernels, core ranges and runtime arguments assembled correctly?",
-    observe: "Step through host-side program construction and enqueue calls. Inspector records host-runtime facts that can remain available after the process exits.",
-    lookFor: "Wrong buffer sizes, stale compile-time arguments, incorrect core selection, or a missing synchronization call on the host.",
-    command: "./build_metal.sh --build-type Debug\ngdb --args ./build/programming_examples/metal_example_eltwise_binary",
+    observe: "GDB can step only the Linux host process. On this machine it is currently absent, and the Release binary has no DWARF line tables; fix both before judging VS Code.",
+    lookFor: "A WSL window, /usr/bin/gdb, a build-debug executable, bound host breakpoints, then wrong buffers, arguments or enqueue order.",
+    command: "sudo apt update\nsudo apt install -y gdb\nCMAKE_BUILD_PARALLEL_LEVEL=8 ./build_metal.sh \\\n  --debug --build-dir build-debug \\\n  --build-metal-tests --build-programming-examples\nreadelf -S build-debug/test/tt_metal/unit_tests_legacy \\\n  | grep -E 'debug_info|debug_line'",
     references: [
       { kind: "Read first", label: "Single-core matmul debugging lab", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/labs/matmul/lab1/lab1.html" },
       { kind: "Host state", label: "Inspector", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/inspector.html" },
@@ -300,7 +324,7 @@ const debugLayers = [
     question: "Do producer and consumer RISCs agree on read pointers, write pointers and tile counts at the same instant?",
     observe: "Place the same named checkpoint in every active kernel on the core. The barrier stops all participating RISCs, then reports CB metadata before allowing them to continue.",
     lookFor: "A write pointer that did not advance, a read pointer that advanced too early, or mismatched tiles received and acknowledged.",
-    command: "export TT_METAL_CHECKPOINT=1\nexport TT_METAL_DPRINT_CORES=0,0\nrm -rf ~/.cache/tt-metal-cache\n# Add DEBUG_CHECKPOINT(\"after_read\") to every active kernel.",
+    command: "export TT_METAL_CHECKPOINT=1\nexport TT_METAL_DPRINT_CORES=0,0\nexport TT_METAL_CACHE=~/ttsim-cache/checkpoint-pass-01\n# Add DEBUG_CHECKPOINT(\"after_read\") to every active kernel.",
     references: [
       { kind: "Read first", label: "Debug Checkpoints", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/checkpoint.html" },
       { kind: "Memory model", label: "Memory for kernel developers", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/memory_for_kernel_developers.html" },
@@ -328,9 +352,9 @@ const debugLayers = [
     processor: "NoC + barriers · synchronization",
     tool: "Simulator errors → Watcher",
     question: "Is a RISC waiting for data that was never published, or issuing an invalid transaction?",
-    observe: "Start with ttsim’s strict error and DPRINT trail. If supported by the current TT-Metal/ttsim pair, use Watcher waypoints or a separate NOC Debug Dump run.",
-    lookFor: "Missing read/write barriers, invalid coordinates, circular-buffer overflow, or two RISCs waiting on each other.",
-    command: "unset TT_METAL_DPRINT_CORES TT_METAL_DEVICE_PROFILER\nexport TT_METAL_WATCHER=120\n./build/programming_examples/metal_example_eltwise_binary\n# Run NOC Debug Dump separately; do not combine the tools.",
+    observe: "Verified on Blackhole: Watcher attaches, polls, writes generated/watcher/watcher.log and the smoke example returns 21. The same Quasar pass currently reaches rv64_custom_0 and stops.",
+    lookFor: "Last four-character waypoint, active kernel IDs, invalid NoC coordinates, CB out-of-bounds access or mutually waiting RISCs.",
+    command: "unset TT_METAL_DPRINT_CORES TT_METAL_DPRINT_RISCVS\nunset TT_METAL_DEVICE_PROFILER TT_METAL_NOC_DEBUG_DUMP\nexport TT_METAL_WATCHER=10\ncp tt_metal/soc_descriptors/blackhole_140_arch.yaml \\\n  ~/sim/soc_descriptor.yaml\nexport TT_METAL_SIMULATOR=~/sim/libttsim_bh.so\n./build/programming_examples/metal_example_add_2_integers_in_riscv\nless generated/watcher/watcher.log",
     references: [
       { kind: "Read first", label: "Watcher", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/watcher.html" },
       { kind: "NoC ordering", label: "NOC Debug Dump", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/noc_debug_dump.html" },
@@ -343,9 +367,9 @@ const debugLayers = [
     processor: "Host + device scopes · chronology",
     tool: "Device Profiler / Tracy",
     question: "Which mechanism began, waited and completed—and in what order?",
-    observe: "Add a small number of named device zones and view their chronology beside host scopes. Disable DPRINT, Watcher and NoC dump first because the tools compete for kernel resources.",
-    lookFor: "Unexpected gaps, repeated launches, or scope ordering. Never interpret ttsim wall time or cycle timing as silicon performance.",
-    command: "unset TT_METAL_DPRINT_CORES TT_METAL_WATCHER TT_METAL_NOC_DEBUG_DUMP\nTT_METAL_DEVICE_PROFILER=1 ./build/programming_examples/metal_example_eltwise_binary",
+    observe: "The official Blackhole profiler example passes here, but the CSV contains only headers; Quasar hits an unimplemented instruction. Host Tracy capture remains the useful ttsim visualization.",
+    lookFor: "Host JIT, construction, dispatch and wait order. A CSV header without TEST-FULL rows is not a successful device-profile capture.",
+    command: "unset TT_METAL_DPRINT_CORES TT_METAL_DPRINT_RISCVS\nunset TT_METAL_WATCHER TT_METAL_NOC_DEBUG_DUMP\ncp tt_metal/soc_descriptors/blackhole_140_arch.yaml \\\n  ~/sim/soc_descriptor.yaml\nexport TT_METAL_SIMULATOR=~/sim/libttsim_bh.so\nTT_METAL_DEVICE_PROFILER=1 \\\n  ./build/programming_examples/profiler/test_full_buffer\nwc -l generated/profiler/.logs/profile_log_device.csv\n# Expected on this pair: 2 lines, no TEST-FULL zones.",
     references: [
       { kind: "Read first", label: "Device Program Profiler", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_program_profiler.html" },
       { kind: "Host timeline", label: "Tracy Profiler", url: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/tracy_profiler.html" },
@@ -786,6 +810,9 @@ function App() {
         <section id="debug" className="content-section debug-section">
           <div className="section-heading"><span>04 / Mechanism debugger</span><h2>Follow one value through the machine.</h2><p>Start at the host and move down only after the current boundary is correct. Each pass instruments one mechanism, one core and one RISC role.</p></div>
           <div className="debug-guardrails"><div><span>01</span><p><b>Baseline first.</b> Save one uninstrumented passing or failing run before adding any tool.</p></div><div><span>02</span><p><b>One observer.</b> DPRINT, Watcher, Device Profiler and NoC dump must not be combined.</p></div><div><span>03</span><p><b>Sequence, not speed.</b> Instrumentation changes the kernel; ttsim timing is not silicon timing.</p></div></div>
+          <div className="observability-status" aria-label="Verified observability status on this WSL machine">
+            {observabilityStatus.map((item) => <article className={`observability-card ${item.tone}`} key={item.title}><div><span>{item.badge}</span><h3>{item.title}</h3></div><p>{item.evidence}</p><small>{item.next}</small></article>)}
+          </div>
           <div className="debug-layout">
             <div className="debug-tabs" role="tablist" aria-label="Debugging mechanisms">{debugLayers.map((item, index) => <button key={item.number} type="button" role="tab" aria-selected={activeDebugLayer === index} className={activeDebugLayer === index ? "active" : ""} onClick={() => setActiveDebugLayer(index)}><span>{item.number}</span><div><strong>{item.title}</strong><small>{item.processor}</small></div></button>)}</div>
             <article className="debug-panel" role="tabpanel">
@@ -796,7 +823,12 @@ function App() {
               <div className="debug-references" aria-label={`References for ${debugLayer.title}`}><span>Read and follow</span><div>{debugLayer.references.map((reference, index) => <a key={reference.url} className={index === 0 ? "primary" : ""} href={reference.url}><small>{reference.kind}</small><strong>{reference.label}</strong><i>↗</i></a>)}</div></div>
             </article>
           </div>
-          <div className="debug-playbook"><p><b>Important ttsim boundary:</b> use GDB for the host process. Device kernels are not ordinary host threads; follow them with DPRINT, checkpoints, asserts and state dumps. Support for hardware-oriented tools such as Watcher or NoC dump can vary with the TT-Metal and ttsim revision.</p><a href="./TTSIM_DEBUGGING_PATH.md">Open the complete debugging playbook ↗</a></div>
+          <div className="debug-verdicts">
+            <article><span>WATCHER · VERIFIED BH</span><h3>Waypoints answer “where did it stop?”</h3><p>Use four-character markers around a wait, then read the last marker and active kernel IDs in <code>generated/watcher/watcher.log</code>. In a stopped GDB session, call <code>tt::watcher::dump(stderr, true)</code>.</p></article>
+            <article><span>PROFILER · VERIFY THE DATA</span><h3>A created CSV can still be empty.</h3><p>Look for named begin/end rows, not only a file. The pinned Blackhole simulator run produced the two CSV headers but no <code>TEST-FULL</code> scopes; Quasar stopped earlier.</p></article>
+            <article><span>GDB · HOST ONLY</span><h3>A kernel breakpoint is the wrong mental model.</h3><p>Break in <code>test_single_dm_l1_write.cpp</code> to inspect the host. Instrument <code>simple_l1_write.cpp</code> with DPRINT or a supported device tool.</p></article>
+          </div>
+          <div className="debug-playbook"><p><b>Machine-specific result:</b> install GDB and build <code>build-debug</code> before using VS Code. Use Watcher on the verified Blackhole lane, DPRINT on Quasar, and Tracy for ttsim host chronology. Re-test device profiling after each TT-Metal/ttsim upgrade.</p><a href="./TTSIM_DEBUGGING_PATH.md">Open commands, launch.json and observed logs ↗</a></div>
         </section>
 
         <section id="notebook" className="content-section notebook-section">

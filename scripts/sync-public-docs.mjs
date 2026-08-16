@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const documents = [
+  "TTSIM_DEBUGGING_PATH.md",
   "TENSTORRENT_GENERATION_COMPARISON.md",
   "BLACKHOLE_VS_HUAWEI_ASCEND.md",
 ];
@@ -16,4 +17,4 @@ for (const document of documents) {
   );
 }
 
-console.log(`Synced ${documents.length} architecture reports from ${root}docs to public/`);
+console.log(`Synced ${documents.length} documents from ${root}docs to public/`);
