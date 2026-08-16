@@ -285,6 +285,15 @@ const observabilityStatus = [
   },
 ] as const;
 
+const agentHostDeviceFlow = [
+  { number: "01", boundary: "WSL agent", tool: "Codex / Claude", proof: "command -v resolves inside /home/n, not /mnt/c" },
+  { number: "02", boundary: "Host test", tool: "GDB", proof: "backtrace, arguments, buffers and enqueue order" },
+  { number: "03", boundary: "RTA + CRTA", tool: "GDB", proof: "serialized runtime and compile-time argument words" },
+  { number: "04", boundary: "ELF → XIP pages", tool: "GDB + readelf", proof: "path, destination, length and binaries_data" },
+  { number: "05", boundary: "Simulator startup", tool: "objdump + addr2line", proof: "PC, raw instruction, disassembly and source line" },
+  { number: "06", boundary: "kernel_main", tool: "DPRINT", proof: "K0 → K3 breadcrumbs around the suspect operation" },
+] as const;
+
 const debugLayers = [
   {
     number: "01",
@@ -529,7 +538,7 @@ function App() {
           <nav className="chapter-nav" aria-label="Book contents">
             {chapterGroups.map((group) => <div className="chapter-group" key={group.label}><h3>{group.label}</h3>{group.chapters.map((chapter) => <a key={chapter.id} href={`#${chapter.id}`} className={activeChapter === chapter.id ? "active" : ""} aria-current={activeChapter === chapter.id ? "location" : undefined} onClick={() => setChaptersOpen(false)}><span>{chapter.number}</span><div><strong>{chapter.title}</strong><small>{chapter.note}</small></div></a>)}</div>)}
           </nav>
-          <div className="sidebar-shelf"><span>Keep beside the terminal</span><a href="./huawei.html">Blackhole vs Huawei <i>↗</i></a><a href="./TENSTORRENT_GENERATION_COMPARISON.md">Generation report <i>↗</i></a><a href="./COMPILER_RUNTIME_CAPSTONE.md">Compiler capstone <i>↗</i></a><a href="./QUASAR_CLUSTER_LAB.md">Quasar cluster lab <i>↗</i></a><a href="./TTSIM_DEBUGGING_PATH.md">Debugging playbook <i>↗</i></a></div>
+          <div className="sidebar-shelf"><span>Keep beside the terminal</span><a href="./huawei.html">Blackhole vs Huawei <i>↗</i></a><a href="./TENSTORRENT_GENERATION_COMPARISON.md">Generation report <i>↗</i></a><a href="./COMPILER_RUNTIME_CAPSTONE.md">Compiler capstone <i>↗</i></a><a href="./QUASAR_CLUSTER_LAB.md">Quasar cluster lab <i>↗</i></a><a href="./WSL_AGENT_HOST_DEVICE_DEBUGGING.md">WSL host/device trace <i>↗</i></a><a href="./TTSIM_DEBUGGING_PATH.md">Debugging playbook <i>↗</i></a></div>
         </aside>
 
         <main>
@@ -810,6 +819,20 @@ function App() {
         <section id="debug" className="content-section debug-section">
           <div className="section-heading"><span>04 / Mechanism debugger</span><h2>Follow one value through the machine.</h2><p>Start at the host and move down only after the current boundary is correct. Each pass instruments one mechanism, one core and one RISC role.</p></div>
           <div className="debug-guardrails"><div><span>01</span><p><b>Baseline first.</b> Save one uninstrumented passing or failing run before adding any tool.</p></div><div><span>02</span><p><b>One observer.</b> DPRINT, Watcher, Device Profiler and NoC dump must not be combined.</p></div><div><span>03</span><p><b>Sequence, not speed.</b> Instrumentation changes the kernel; ttsim timing is not silicon timing.</p></div></div>
+          <div className="agent-debug-workbench">
+            <div className="agent-debug-copy">
+              <p className="eyebrow">WSL coding-agent lane</p>
+              <h3>Native agents, one Linux toolchain.</h3>
+              <p>Run Codex or Claude Code, Git, CMake, GDB and TT-Metal from the same Ubuntu filesystem. VS Code is the window; the WSL extension owns the terminal and debugger.</p>
+              <div className="agent-debug-facts"><div><small>Repository</small><strong>/home/n/src/tt-metal</strong></div><div><small>Host debugger</small><strong>/usr/bin/gdb</strong></div><div><small>Device evidence</small><strong>DPRINT + ELF tools</strong></div></div>
+              <a href="./WSL_AGENT_HOST_DEVICE_DEBUGGING.md">Open the reviewed setup and trace plan ↗</a>
+            </div>
+            <Command label="Install and verify inside Ubuntu" code={'sudo apt update\nsudo apt install -y gdb gdb-multiarch binutils-riscv64-linux-gnu\ncurl -fsSL https://chatgpt.com/codex/install.sh | sh\ncurl -fsSL https://claude.ai/install.sh | bash\ntype -a codex claude gdb node npm\ncd ~/src/tt-metal && code .'} />
+          </div>
+          <div className="host-device-trace" aria-label="Evidence-gated host to device trace">
+            {agentHostDeviceFlow.map((item) => <article key={item.number}><div><span>{item.number}</span><small>{item.tool}</small></div><h3>{item.boundary}</h3><p>{item.proof}</p></article>)}
+          </div>
+          <div className="trace-rule"><article><span>HOST STACK</span><h3>GDB follows x86-64 only.</h3><p>Break at program creation, runtime-argument serialization, ELF loading and dispatch-page packing. Save <code>bt</code>, <code>info args</code> and the exact vectors at every boundary.</p></article><article><span>DEVICE STARTUP</span><h3>Disassemble before instrumenting.</h3><p>Map a failing simulator PC to the raw RISC-V word, symbol and TT-Metal source line. The current Quasar stop is <code>0x400254: 0x4005a00b</code>, before user <code>kernel_main</code>.</p></article><article><span>DEVICE FLOW</span><h3>DPRINT proves reached states.</h3><p>Add four short breadcrumbs around one suspect operation, filter to one core and one RISC, and use a fresh <code>TT_METAL_CACHE</code> for every instrumented build.</p></article></div>
           <div className="observability-status" aria-label="Verified observability status on this WSL machine">
             {observabilityStatus.map((item) => <article className={`observability-card ${item.tone}`} key={item.title}><div><span>{item.badge}</span><h3>{item.title}</h3></div><p>{item.evidence}</p><small>{item.next}</small></article>)}
           </div>

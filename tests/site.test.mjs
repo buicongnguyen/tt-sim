@@ -11,6 +11,7 @@ test("builds a GitHub Pages-ready field guide", async () => {
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/);
   await access(new URL("og.png", root));
   await access(new URL("TTSIM_DEBUGGING_PATH.md", root));
+  await access(new URL("WSL_AGENT_HOST_DEVICE_DEBUGGING.md", root));
   await access(new URL("BLACKHOLE_SMOKE_TEST.md", root));
   await access(new URL("SIMULATION_SEQUENCE.md", root));
   await access(new URL("QUASAR_CLUSTER_LAB.md", root));
@@ -18,6 +19,29 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("TENSTORRENT_GENERATION_COMPARISON.md", root));
   await access(new URL("BLACKHOLE_VS_HUAWEI_ASCEND.md", root));
   await access(new URL("huawei.html", root));
+});
+
+test("publishes the WSL agent and host-to-device trace plan", async () => {
+  const app = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/styles.css", root), "utf8");
+  const guide = await readFile(new URL("../docs/WSL_AGENT_HOST_DEVICE_DEBUGGING.md", root), "utf8");
+  const publishedGuide = await readFile(new URL("WSL_AGENT_HOST_DEVICE_DEBUGGING.md", root), "utf8");
+  const gdb = await readFile(new URL("../examples/gdb/quasar-host-device.gdb", root), "utf8");
+  const launch = await readFile(new URL("../examples/vscode/launch.json", root), "utf8");
+  assert.match(app, /Native agents, one Linux toolchain/);
+  assert.match(app, /0x400254: 0x4005a00b/);
+  assert.match(app, /agentHostDeviceFlow/);
+  assert.match(styles, /\.agent-debug-workbench/);
+  assert.match(styles, /\.host-device-trace/);
+  assert.match(guide, /## Logic review/);
+  assert.match(guide, /Rejected premises/);
+  assert.match(guide, /program_run_args\.cpp:704/);
+  assert.match(guide, /0x400254.*4005a00b/);
+  assert.match(guide, /K0.*K1.*K2.*K3/s);
+  assert.match(gdb, /program\.cpp:2211/);
+  assert.match(gdb, /define tt-host-state/);
+  assert.match(launch, /TT_METAL_CACHE/);
+  assert.equal(publishedGuide, guide);
 });
 
 test("documents the verified Blackhole smoke test", async () => {

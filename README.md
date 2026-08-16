@@ -40,6 +40,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `docs/RESEARCH.md` — scope decisions, machine audit and upstream evidence
 - `docs/TTSIM_READING_PATH.md` — curated first-party documentation and suggested reading order
 - `docs/TTSIM_DEBUGGING_PATH.md` — layered host, RISC-V, CB/L1, NoC and simulator debugging playbook
+- `docs/WSL_AGENT_HOST_DEVICE_DEBUGGING.md` — native Codex/Claude WSL setup and a GDB-to-DPRINT host/device trace plan
 - `examples/vscode/launch.json` — copy-ready WSL/GDB launch profile for the Quasar host-side test
 - `docs/SIMULATION_SEQUENCE.md` — detailed Blackhole and Quasar control/data sequence diagrams
 - `docs/QUASAR_CLUSTER_LAB.md` — source-backed Quasar cluster versus Blackhole architecture study

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const documents = [
+  "WSL_AGENT_HOST_DEVICE_DEBUGGING.md",
   "TTSIM_DEBUGGING_PATH.md",
   "TENSTORRENT_GENERATION_COMPARISON.md",
   "BLACKHOLE_VS_HUAWEI_ASCEND.md",
