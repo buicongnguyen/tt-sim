@@ -57,6 +57,220 @@ which reports 32 GB global memory, 1.2 TB/s GM-to-local paths, 34 MB on-chip
 cache, a 16×16×16 tensor unit and 256 TFLOPS for Ascend 910. The paper is
 technical evidence hosted by Huawei, not a current 910B/910C product sheet.
 
+## Question 1: What can Huawei learn from Tenstorrent?
+
+### Short answer
+
+Huawei does not need to learn the basic idea of an asynchronous AI pipeline.
+Ascend already has Cube, Vector and Scalar units, local memory and independent
+MTE copy engines. The more useful Tenstorrent lesson is to make **locality,
+communication and failure evidence more programmable and visible**.
+
+### 1. Treat data movement as part of the algorithm
+
+TT-Metal exposes reader and writer kernels, circular buffers, NoC operations,
+semaphores and multicast. A kernel developer can describe not only the math,
+but where a tile lives, who produces it and when a consumer may proceed. The
+[Metalium programming model](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/get_started/get_started.html)
+formalizes the reader → compute → writer pipeline, while the
+[multicast matmul lab](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/labs/matmul/lab3/lab3.html)
+shows one DRAM read feeding several workers through on-chip multicast.
+
+Ascend already exposes `GlobalTensor`, `LocalTensor`, queues and MTE movement.
+The lesson is to make peer-local-memory movement, multicast, queue occupancy and
+topology costs equally stable compiler primitives. That would help a compiler
+reason about:
+
+- one HBM read feeding several AI Cores;
+- Cube/Vector handoff without avoidable global-memory traffic;
+- producer/consumer backpressure;
+- communication and compute overlap;
+- the local-memory high-water mark.
+
+### 2. Strengthen the software-visible control plane
+
+Huawei describes the Scalar unit as a small controller that calculates
+addresses, controls loops and issues Cube, Vector, transfer and synchronization
+instructions. Tenstorrent gives each worker several programmable RISC-V roles
+around its matrix and vector engines.
+
+More general local control can help Huawei with irregular work that does not map
+perfectly to a dense pipeline:
+
+- sparse tensors and Mixture-of-Experts routing;
+- dynamic load balancing;
+- fragmented or discontinuous memory accesses;
+- custom collectives;
+- graph and signal-processing kernels with nonuniform control flow.
+
+Huawei's newer Ascend C SIMT interfaces already move in this direction, so this
+is an evolution rather than a missing capability.
+
+### 3. Make cluster-local reuse complement HBM
+
+The lesson is not to replace HBM with GDDR6. HBM is one of Huawei's real
+advantages. Instead, combine high external bandwidth with more compiler-visible
+reuse:
+
+```text
+HBM / global memory
+        ↓ read once
+cluster-local buffer or multicast source
+        ↓ distribute on-chip
+Cube / Vector consumers
+        ↓ reuse many times
+write the fused result once
+```
+
+A Quasar-like cluster direction is interesting here because hierarchical shared
+SRAM can reduce off-cluster traffic. Quasar is pre-silicon, however, so it is a
+design hypothesis—not evidence that it outperforms Ascend or Blackhole.
+
+### 4. Publish a continuous compiler-to-binary evidence path
+
+Tenstorrent developers can inspect TT-MLIR/TT-Forge, TT-NN, TT-Metal, HAL code,
+firmware, architecture LLKs, generated RISC-V ELF files and simulator behavior.
+Huawei provides extensive Ascend C and CANN interfaces, but could make more of
+the lowering and binary contract reproducible:
+
+```text
+framework graph
+  → compiler IR and fusion decision
+  → tiling and memory plan
+  → generated device binary
+  → MTE/Cube/Vector queues
+  → HCCL communication
+  → device trace and numerical result
+```
+
+The most useful simulator would preserve this entire chain and allow a failing
+device PC to be mapped back to the generated operation and source decision.
+
+### 5. Expose topology to the compiler
+
+Tenstorrent treats NoC and Ethernet movement as part of the programming model.
+Huawei already has HCCL and large scale-up domains; the lesson is to make route,
+placement and congestion costs more explicit to graph compilation. Operator
+placement, tensor placement and collective scheduling should share one cost
+model rather than becoming separate optimization passes with incomplete
+information.
+
+### Answer in one line
+
+> Huawei should keep its HBM and mature CANN system, while adopting more
+> explicit locality, programmable communication, open lowering contracts and
+> simulator-level observability from the Tenstorrent approach.
+
+## Question 2: Where is Huawei more advanced than Tenstorrent in architecture and performance?
+
+### Short answer
+
+Huawei's documented advantages are **external-memory bandwidth, specialized
+dense-compute pipelines, tightly integrated scale-up and production training
+software**. Public evidence does not establish that Huawei is universally
+faster per chip, per watt or per dollar.
+
+### 1. Higher cited external-memory feed
+
+The original Ascend 910 evidence reports 32 GB of global memory and about
+1.2 TB/s for GM → L1/UB paths. Blackhole p150 publishes 32 GB GDDR6 at
+512 GB/s. On this deliberately narrow axis:
+
+```text
+1.2 TB/s ÷ 0.512 TB/s ≈ 2.34×
+```
+
+That gives Ascend a higher ceiling for large-batch training, long-context
+attention, embeddings and other operations that repeatedly reach external
+memory. It is not a prediction that every application is 2.34× faster.
+Blackhole counters with 180 MB of distributed SRAM and explicit reuse; the
+Ascend cache and Blackhole SRAM totals are not like-for-like address spaces.
+
+### 2. A deeply specialized dense-compute hierarchy
+
+Huawei's public architecture defines Scalar issue and synchronization, Cube
+matrix execution, Vector execution, MTE1/2/3 movement, L1, L0A/B/C, Unified
+Buffer and FixPipe. The separated architecture can schedule AIC and AIV
+resources independently under system-software control. See the official
+[Ascend C architecture guide](https://www.hiascend.com/document/detail/en/canncommercial/850/opdevg/Ascendcopdevg/atlas_ascendc_10_0008.html).
+
+For a well-optimized dense kernel, this specialization can keep transfer,
+matrix, post-processing and copy-out engines busy concurrently. Its tradeoff is
+less general control and, in the separated design, some AIC/AIV exchange through
+global memory.
+
+### 3. A larger tightly coupled scale-up domain
+
+Huawei's official [Atlas 900 A3 page](https://www.hiascend.com/hardware/cluster)
+publishes:
+
+- up to 384 interconnected Ascend NPUs;
+- 48 TB of unified-addressed device memory;
+- 784 GB/s bidirectional device-to-device bandwidth;
+- 200 ns single-hop communication latency;
+- 307.2/288.7 PFLOPS FP16 system peak, depending on configuration.
+
+Tenstorrent's [Blackhole Galaxy page](https://tenstorrent.com/hardware/galaxy)
+publishes a different-sized unit:
+
+- 32 Blackhole chips;
+- 1 TB aggregate GDDR6 and 6.2 GB aggregate SRAM;
+- 23 PFLOPS Block-FP8 peak;
+- 32 TB/s accelerator fabric, plus Ethernet scale-out to multiple Galaxies.
+
+Huawei is more advanced in presenting hundreds of NPUs as one tightly
+integrated scale-up machine. Tenstorrent emphasizes smaller modular units and
+programmable Ethernet scale-out. The peak numbers cannot rank them because the
+chip count, precision and system boundary differ.
+
+### 4. A more mature large-training software system
+
+[CANN 9.0 documentation](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/index/index.html)
+lists PyTorch, TensorFlow and MindSpore integration, graph and operator APIs,
+HCCL collectives, transformer acceleration, automatic optimization, profiling,
+precision debugging and migration tools. Huawei also reports production
+deployment of Atlas 900 A3 SuperPoDs.
+
+TT-NN, TT-Forge/TT-MLIR and TT-Fabric are open and improving quickly, but the
+Blackhole production ecosystem is younger. For a large training installation,
+collective reliability, framework coverage and operational tooling can matter
+as much as a chip's arithmetic peak.
+
+### What the performance evidence supports
+
+Huawei is likely advantaged when the chosen product and software version are
+well optimized for:
+
+- large distributed FP16/BF16 training;
+- dense matrix workloads;
+- HBM/global-memory-bound operators;
+- large scale-up collectives;
+- applications already covered by CANN/HCCL libraries.
+
+Tenstorrent can remain attractive for explicit dataflow research, custom and
+irregular kernels, software-controlled SRAM reuse, open compiler work and
+modular Ethernet-based inference.
+
+### What the evidence does not support
+
+No trustworthy public apples-to-apples benchmark holds all of these constant:
+
+```text
+same model + same precision + same batch
++ same compiler maturity + same power boundary
++ same number of chips + same latency target
+```
+
+FP16 Atlas 900 A3 totals cannot be ranked directly against Block-FP8 Galaxy
+totals. Vendor demonstrations using different models or configurations also do
+not establish per-chip performance, performance per watt or cost per token.
+
+### Answer in one line
+
+> Huawei is ahead in HBM-fed dense training and tightly integrated scale-up;
+> Tenstorrent is ahead in open low-level programmability and explicit dataflow,
+> and controlled measurements are still required for an end-to-end winner.
+
 ## Does Huawei “use HBM”?
 
 **Yes for the original Ascend 910 evidence used here:** the cited architecture

@@ -168,11 +168,19 @@ test("builds a dedicated Blackhole versus Huawei Ascend page", async () => {
   assert.match(app, /HBM is one axis/);
   assert.match(app, /not silently assigned to 910B\/910C/);
   assert.match(app, /144 GB \/ 4 TB\/s HBM/);
+  assert.match(app, /What can Huawei learn from Tenstorrent's architecture/);
+  assert.match(app, /Where is Huawei more advanced in architecture and performance/);
+  assert.match(app, /784 GB\/s bidirectional D2D/);
+  assert.match(app, /No public same-model, same-precision, same-power benchmark/);
   assert.match(styles, /\.flow-pair/);
   assert.match(styles, /\.comparison-table/);
+  assert.match(styles, /\.qa-grid/);
   assert.match(report, /There is no architecture-only winner/);
   assert.match(report, /future vendor roadmap/);
   assert.match(report, /32 GB HBM Gen2/);
+  assert.match(report, /## Question 1: What can Huawei learn from Tenstorrent/);
+  assert.match(report, /## Question 2: Where is Huawei more advanced than Tenstorrent/);
+  assert.match(report, /No trustworthy public apples-to-apples benchmark/);
   assert.equal(publishedReport, report);
 });
 
