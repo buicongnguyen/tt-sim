@@ -63,7 +63,7 @@ function HuaweiApp() {
     <div className="hwa-page">
       <header className="hwa-topbar">
         <a className="hwa-brand" href="./index.html"><span>TT•SIM</span><small>architecture notes</small></a>
-        <nav aria-label="Page navigation"><a href="#flows">Data paths</a><a href="#matrix">Matrix</a><a href="#questions">Q&amp;A</a><a href="#compiler">Compiler</a><a href="#sources">Sources</a><a className="back" href="./index.html#generations">← Generation study</a></nav>
+        <nav aria-label="Page navigation"><a href="#flows">Data paths</a><a href="#matrix">Matrix</a><a href="#questions">Q&amp;A</a><a href="#compiler">Compiler</a><a href="./async-kernels.html">Async kernels</a><a className="back" href="./index.html#generations">← Generation study</a></nav>
       </header>
 
       <main>
@@ -134,7 +134,7 @@ function HuaweiApp() {
         </section>
       </main>
 
-      <footer className="hwa-footer"><div><span>TT•SIM ARCHITECTURE NOTES</span><p>Independent technical study. Product names belong to their respective owners.</p></div><a href="https://github.com/buicongnguyen/tt-sim">Source on GitHub ↗</a><a href="./index.html">Return to the lab guide →</a></footer>
+      <footer className="hwa-footer"><div><span>TT•SIM ARCHITECTURE NOTES</span><p>Independent technical study. Product names belong to their respective owners.</p></div><a href="https://github.com/buicongnguyen/tt-sim">Source on GitHub ↗</a><a href="./async-kernels.html">Async kernel field note →</a><a href="./index.html">Return to the lab guide →</a></footer>
     </div>
   );
 }

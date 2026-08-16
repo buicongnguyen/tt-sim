@@ -12,6 +12,7 @@ export default defineConfig({
       input: {
         main: fileURLToPath(new URL("./index.html", import.meta.url)),
         huawei: fileURLToPath(new URL("./huawei.html", import.meta.url)),
+        asyncKernels: fileURLToPath(new URL("./async-kernels.html", import.meta.url)),
       },
     },
   },

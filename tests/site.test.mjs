@@ -18,7 +18,9 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("COMPILER_RUNTIME_CAPSTONE.md", root));
   await access(new URL("TENSTORRENT_GENERATION_COMPARISON.md", root));
   await access(new URL("BLACKHOLE_VS_HUAWEI_ASCEND.md", root));
+  await access(new URL("ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md", root));
   await access(new URL("huawei.html", root));
+  await access(new URL("async-kernels.html", root));
 });
 
 test("publishes the WSL agent and host-to-device trace plan", async () => {
@@ -181,6 +183,27 @@ test("builds a dedicated Blackhole versus Huawei Ascend page", async () => {
   assert.match(report, /## Question 1: What can Huawei learn from Tenstorrent/);
   assert.match(report, /## Question 2: Where is Huawei more advanced than Tenstorrent/);
   assert.match(report, /No trustworthy public apples-to-apples benchmark/);
+  assert.equal(publishedReport, report);
+});
+
+test("publishes the asynchronous kernel and matrix granularity field note", async () => {
+  const html = await readFile(new URL("async-kernels.html", root), "utf8");
+  const app = await readFile(new URL("../src/AsyncKernelsApp.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/async-kernels.css", root), "utf8");
+  const report = await readFile(new URL("../docs/ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md", root), "utf8");
+  const publishedReport = await readFile(new URL("ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md", root), "utf8");
+  assert.match(html, /Async kernels × matrix granularity/);
+  assert.match(html, /(?:src|href)="\.\/assets\//);
+  assert.match(app, /Async is a.*contract/);
+  assert.match(app, /8×16/);
+  assert.match(app, /16 MVMUL/);
+  assert.match(app, /SetFlag \/ WaitFlag/);
+  assert.match(styles, /\.scope-workbench/);
+  assert.match(styles, /\.face-grid/);
+  assert.match(report, /Four such issues cover a 32×16 region/);
+  assert.match(report, /noc_async_writes_flushed/);
+  assert.match(report, /16×32 × 32×16 → 16×16 output/);
+  assert.match(report, /Huawei matrix granularity/);
   assert.equal(publishedReport, report);
 });
 

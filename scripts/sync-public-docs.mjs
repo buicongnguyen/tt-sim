@@ -7,6 +7,7 @@ const documents = [
   "TTSIM_DEBUGGING_PATH.md",
   "TENSTORRENT_GENERATION_COMPARISON.md",
   "BLACKHOLE_VS_HUAWEI_ASCEND.md",
+  "ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md",
 ];
 
 await mkdir(new URL("../public/", import.meta.url), { recursive: true });
