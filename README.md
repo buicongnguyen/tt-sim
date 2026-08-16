@@ -34,6 +34,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - Blackhole versus Huawei Ascend: <https://buicongnguyen.github.io/tt-sim/huawei.html>
 - Async kernels and matrix granularity: <https://buicongnguyen.github.io/tt-sim/async-kernels.html>
 - Host-to-RISC firmware and operation-kernel flow: <https://buicongnguyen.github.io/tt-sim/firmware-flow.html>
+- Kernel/compiler contribution roadmap: <https://buicongnguyen.github.io/tt-sim/#contribute>
 
 ## Repository map
 
@@ -54,6 +55,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `docs/BLACKHOLE_VS_HUAWEI_ASCEND.md` — memory, dataflow, software and scaling comparison
 - `docs/ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md` — NoC/CB/register synchronization, LLK MVMUL geometry and Huawei equivalents
 - `docs/RISC_FIRMWARE_TO_KERNEL_FLOW.md` — source-linked BRISC/NCRISC/TRISC build, boot, dispatch and warm-launch analysis
+- `docs/CONTRIBUTION_ROADMAP.md` — hardware-free low-level kernel, TT-MLIR, upstream contribution and bounty strategy
 - `scripts/05-architecture-evidence.sh` — reproducible descriptor and architecture-LLK audit
 - `huawei.html` — dedicated Blackhole versus Huawei Ascend Pages route
 - `async-kernels.html` — dedicated asynchronous-kernel and matrix-granularity Pages route

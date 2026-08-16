@@ -30,6 +30,7 @@ const chapterGroups = [
       { id: "generations", number: "02D", title: "Three generations", note: "Code-backed comparison" },
       { id: "experiments", number: "03", title: "Six experiments", note: "Learn by changing" },
       { id: "capstone", number: "03A", title: "Compiler/runtime capstone", note: "Eight experiments" },
+      { id: "contribute", number: "03B", title: "Contribution roadmap", note: "Kernel first, compiler connected" },
     ],
   },
   {
@@ -205,6 +206,28 @@ const capstoneTargets = {
     command: "cd ~/src/tt-metal\nexport TT_METAL_SIMULATOR=~/sim/libttsim_qsr.so\nexport TT_METAL_SLOW_DISPATCH_MODE=1\ncp tt_metal/soc_descriptors/quasar_32_arch.yaml \\\n  ~/sim/soc_descriptor.yaml\n./build/test/tt_metal/unit_tests_legacy \\\n  --gtest_filter=QuasarMeshDeviceSingleCardFixture.SingleDmL1Write",
   },
 } as const;
+
+const contributionLanes = [
+  { project: "ttsim", access: "Issues only", hardware: "None", role: "Architectural oracle", detail: "Reproduce strictness, alignment, synchronization and numerical failures. The public repository does not accept pull requests." },
+  { project: "tt-metal", access: "Issues + PRs", hardware: "Selected work", role: "Kernel/runtime correctness", detail: "Metalium examples, LLK/SFPU correctness and simulator-backed TTNN sweeps can produce real upstream fixes." },
+  { project: "tt-mlir", access: "Issues + PRs", hardware: "Many tests need none", role: "Primary compiler lane", detail: "Verification, rewrite legality, lit/FileCheck, layouts, allocation and D2M lowering tests are meaningful without silicon." },
+  { project: "tt-emule", access: "PRs welcome", hardware: "None", role: "First upstream code PR", detail: "Emulates Metal host and kernel APIs on x86-64 without a card, driver or firmware." },
+] as const;
+
+const kernelLearningPath = [
+  { number: "01", title: "Move bytes", layer: "DRAM · L1 · NoC", proof: "Byte-for-byte loopback; one corrupted byte fails the host oracle." },
+  { number: "02", title: "Balance buffers", layer: "reserve · push · wait · pop", proof: "Producer and consumer tile counts balance at every CB boundary." },
+  { number: "03", title: "Compute one tile", layer: "SFPU · FPU · DST", proof: "Boundary inputs and every output element match an independent oracle." },
+  { number: "04", title: "Trace the program", layer: "TTNN · runtime args · dispatch", proof: "Public API maps to exact reader, compute and writer kernels." },
+  { number: "05", title: "Lower the same op", layer: "TTIR/TTNN/D2M → TTMetal", proof: "Before/after IR and negative tests prove the legal transformation." },
+] as const;
+
+const contributionPhases = [
+  { range: "Weeks 1–3", title: "Runtime mechanics", body: "Loopback, one streaming pipeline, elementwise, matmul and two intentional protocol failures." },
+  { range: "Weeks 4–6", title: "Differential bug harness", body: "PyTorch or NumPy versus TTNN on Wormhole and Blackhole across domains, dtypes, layouts and memory." },
+  { range: "Weeks 7–9", title: "Real compiler work", body: "Trace one op through TT-MLIR; add an IR-shape test and one negative verifier or rewrite case." },
+  { range: "Weeks 10–12", title: "Upstream proof", body: "Land one focused tt-emule or TT-MLIR test PR, then manually claim a suitable unassigned bounty." },
+] as const;
 
 const docTracks = [
   {
@@ -520,7 +543,7 @@ function App() {
         <button className="chapters-button" type="button" onClick={() => setChaptersOpen(!chaptersOpen)} aria-expanded={chaptersOpen} aria-controls="book-sidebar"><span aria-hidden="true">☰</span> Chapters</button>
         <button className="menu-button" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}>Index</button>
         <nav className={menuOpen ? "topnav open" : "topnav"} aria-label="Primary">
-          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#architecture">Architecture</a><a href="#generations">Generations</a><a href="#experiments">Experiments</a><a href="#capstone">Capstone</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
+          <a href="#machine">Machine</a><a href="#setup">Setup</a><a href="#architecture">Architecture</a><a href="#generations">Generations</a><a href="#experiments">Experiments</a><a href="#capstone">Capstone</a><a href="#contribute">Contribute</a><a href="#debug">Debug</a><a href="#docs">Docs</a>
           <button className="theme-toggle" type="button" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} aria-pressed={theme === "light"} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><span aria-hidden="true">◐</span><small>{theme === "dark" ? "Light" : "Dark"}</small></button>
           <a className="repo-link" href="https://github.com/buicongnguyen/tt-sim">GitHub ↗</a>
         </nav>
@@ -538,7 +561,7 @@ function App() {
           <nav className="chapter-nav" aria-label="Book contents">
             {chapterGroups.map((group) => <div className="chapter-group" key={group.label}><h3>{group.label}</h3>{group.chapters.map((chapter) => <a key={chapter.id} href={`#${chapter.id}`} className={activeChapter === chapter.id ? "active" : ""} aria-current={activeChapter === chapter.id ? "location" : undefined} onClick={() => setChaptersOpen(false)}><span>{chapter.number}</span><div><strong>{chapter.title}</strong><small>{chapter.note}</small></div></a>)}</div>)}
           </nav>
-          <div className="sidebar-shelf"><span>Keep beside the terminal</span><a href="./firmware-flow.html">Host → RISC firmware flow <i>↗</i></a><a href="./async-kernels.html">Async kernels + tile math <i>↗</i></a><a href="./huawei.html">Blackhole vs Huawei <i>↗</i></a><a href="./TENSTORRENT_GENERATION_COMPARISON.md">Generation report <i>↗</i></a><a href="./COMPILER_RUNTIME_CAPSTONE.md">Compiler capstone <i>↗</i></a><a href="./QUASAR_CLUSTER_LAB.md">Quasar cluster lab <i>↗</i></a><a href="./WSL_AGENT_HOST_DEVICE_DEBUGGING.md">WSL host/device trace <i>↗</i></a><a href="./TTSIM_DEBUGGING_PATH.md">Debugging playbook <i>↗</i></a></div>
+          <div className="sidebar-shelf"><span>Keep beside the terminal</span><a href="./CONTRIBUTION_ROADMAP.md">Contribution roadmap <i>↗</i></a><a href="./firmware-flow.html">Host → RISC firmware flow <i>↗</i></a><a href="./async-kernels.html">Async kernels + tile math <i>↗</i></a><a href="./huawei.html">Blackhole vs Huawei <i>↗</i></a><a href="./TENSTORRENT_GENERATION_COMPARISON.md">Generation report <i>↗</i></a><a href="./COMPILER_RUNTIME_CAPSTONE.md">Compiler capstone <i>↗</i></a><a href="./QUASAR_CLUSTER_LAB.md">Quasar cluster lab <i>↗</i></a><a href="./WSL_AGENT_HOST_DEVICE_DEBUGGING.md">WSL host/device trace <i>↗</i></a><a href="./TTSIM_DEBUGGING_PATH.md">Debugging playbook <i>↗</i></a></div>
         </aside>
 
         <main>
@@ -797,7 +820,7 @@ function App() {
           </div>
 
           <div className="fusion-workbench">
-            <div className="fusion-copy"><p className="eyebrow">Experiment 06 · first compiler pass</p><h3>Recognize the DAG, then earn the fusion.</h3><p>Start with generic quoted operations, define a real dialect, then implement a rewrite pattern. Reject invalid dimensions, types, bias shapes and unsafe extra uses before replacing the graph.</p><a href="https://github.com/buicongnguyen/tt-sim/tree/main/experiments/fused-linear-relu">Open the starter fixtures on GitHub ↗</a></div>
+            <div className="fusion-copy"><p className="eyebrow">Experiment 06 · first compiler pass</p><h3>Recognize the DAG, then earn the fusion.</h3><p>Use the generic quoted operations to learn legality, then re-express the experiment through an existing TT-MLIR TTIR/TTNN or D2M path. The upstream-sized artifact is real before/after IR with lit/FileCheck coverage—not a private toy dialect.</p><a href="https://github.com/buicongnguyen/tt-sim/tree/main/experiments/fused-linear-relu">Open the starter fixtures on GitHub ↗</a></div>
             <div className="fusion-ir">
               <div><span>BEFORE · 3 OPS</span><code>matmul(A, B)</code><i>↓</i><code>add_bias(…, bias)</code><i>↓</i><code>relu(…)</code></div>
               <b>→</b>
@@ -814,6 +837,36 @@ function App() {
           <div className="capstone-download"><div><p className="eyebrow">Repeat the complete study</p><h3>Commands, exit gates, fixtures and portfolio checklist.</h3></div><a href="./COMPILER_RUNTIME_CAPSTONE.md">Open the standalone capstone guide ↗</a></div>
 
           <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://github.com/tenstorrent/tt-metal/blob/main/METALIUM_GUIDE.md">Metalium guide ↗</a><a href="https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/examples/dram_loopback.html">DRAM loopback ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/overview.html">TT-MLIR architecture ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/tools.html">ttmlir-opt tools ↗</a><a href="https://mlir.llvm.org/docs/PatternRewriter/">MLIR rewriting ↗</a></div></div>
+        </section>
+
+        <section id="contribute" className="content-section contribution-section">
+          <div className="section-heading"><span>03B / Contribution roadmap</span><h2>Kernel first, compiler connected.</h2><p>Low-level skill is scarce and valuable, but the expert move is to follow one operation from NoC and circular buffers through TTNN program construction and TT-MLIR lowering.</p></div>
+
+          <div className="expertise-split" aria-label="Recommended learning allocation: 60 percent kernel and runtime, 40 percent compiler">
+            <article className="kernel-share"><span>60%</span><div><small>KERNEL + RUNTIME</small><strong>Move, synchronize, compute, dispatch.</strong><p>DRAM/L1, NoC, CB protocol, DST, LLK/SFPU, runtime arguments and program construction.</p></div></article>
+            <article className="compiler-share"><span>40%</span><div><small>COMPILER</small><strong>Verify, transform, schedule, lower.</strong><p>TTIR/TTNN/D2M, rewrite legality, layouts, allocation, DMA scheduling and TTMetal.</p></div></article>
+          </div>
+
+          <div className="kernel-path" aria-label="Five-stage low-level kernel to compiler learning path">
+            {kernelLearningPath.map((item, index) => <article key={item.number}><header><span>{item.number}</span><small>{item.layer}</small></header><h3>{item.title}</h3><p>{item.proof}</p>{index < kernelLearningPath.length - 1 && <i aria-hidden="true">→</i>}</article>)}
+          </div>
+
+          <div className="contribution-boundary"><div><p className="eyebrow">No-hardware contribution map</p><h3>Use each project for the job it can accept.</h3><p><b>ttsim finds and localizes failures.</b> <b>tt-metal and tt-mlir accept fixes.</b> <b>tt-emule is the cleanest first code-contribution lane without a card.</b></p></div><a href="./CONTRIBUTION_ROADMAP.md">Open the complete reviewed roadmap ↗</a></div>
+
+          <div className="contribution-lanes" role="table" aria-label="Tenstorrent hardware-free contribution lanes">
+            <div className="lane-head" role="row"><span role="columnheader">Project</span><span role="columnheader">Access</span><span role="columnheader">Hardware</span><span role="columnheader">Best role</span><span role="columnheader">What to do</span></div>
+            {contributionLanes.map((lane) => <div className="lane-row" role="row" key={lane.project}><strong role="cell">{lane.project}</strong><span role="cell">{lane.access}</span><span role="cell">{lane.hardware}</span><b role="cell">{lane.role}</b><p role="cell">{lane.detail}</p></div>)}
+          </div>
+
+          <div className="bounty-guardrail"><span>BOUNTY GUARDRAIL</span><div><h3>AI agents must not claim bounties.</h3><p>Tenstorrent permits reviewed offline AI assistance, but the human contributor must manually request assignment, understand the code and take responsibility. A payout requires assignment plus a merged PR for an issue carrying both bounty and difficulty labels. Never start an already assigned issue expecting payment.</p><div><a href="https://docs.tenstorrent.com/bounty_terms.html">Read the terms ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/main/CONTRIBUTING.md#bug-bounty-program---ai-tool-restrictions">Read the AI restriction ↗</a><a href="https://github.com/tenstorrent/tt-metal/issues?q=is%3Aissue%20state%3Aopen%20label%3Abounty%20no%3Aassignee">Check unassigned bounties ↗</a></div></div></div>
+
+          <div className="contribution-phases" aria-label="Twelve-week contribution plan">
+            {contributionPhases.map((phase) => <article key={phase.range}><span>{phase.range}</span><h3>{phase.title}</h3><p>{phase.body}</p></article>)}
+          </div>
+
+          <div className="contribution-verdict"><p className="eyebrow">The target identity</p><h3>Compiler/runtime engineer—not only kernel author, not only model porter.</h3><p>Build the kernel foundation deeply enough to explain the machine, then connect it to the compiler decisions that create the program. Model bring-up becomes the later integration proof.</p></div>
+
+          <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://github.com/tenstorrent/ttsim">ttsim boundary ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/main/CONTRIBUTING.md">TT-Metal contributing ↗</a><a href="https://github.com/tenstorrent/tt-mlir">TT-MLIR ↗</a><a href="https://github.com/tenstorrent/tt-emule">tt-emule ↗</a><a href="https://docs.tenstorrent.com/bounty_terms.html">Bounty terms ↗</a></div></div>
         </section>
 
         <section id="debug" className="content-section debug-section">

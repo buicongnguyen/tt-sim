@@ -19,6 +19,7 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("TENSTORRENT_GENERATION_COMPARISON.md", root));
   await access(new URL("BLACKHOLE_VS_HUAWEI_ASCEND.md", root));
   await access(new URL("ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md", root));
+  await access(new URL("CONTRIBUTION_ROADMAP.md", root));
   await access(new URL("RISC_FIRMWARE_TO_KERNEL_FLOW.md", root));
   await access(new URL("huawei.html", root));
   await access(new URL("async-kernels.html", root));
@@ -142,6 +143,20 @@ test("publishes the fused linear compiler and runtime capstone", async () => {
   assert.match(input, /"lab\.matmul"/);
   assert.match(expected, /"lab\.fused_linear_relu"/);
   assert.match(oracle, /np\.testing\.assert_allclose/);
+});
+
+test("publishes the hardware-free contribution roadmap", async () => {
+  const app = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const guide = await readFile(new URL("../docs/CONTRIBUTION_ROADMAP.md", root), "utf8");
+  const publishedGuide = await readFile(new URL("CONTRIBUTION_ROADMAP.md", root), "utf8");
+  assert.match(app, /id="contribute"/);
+  assert.match(app, /Kernel first, compiler connected/);
+  assert.match(app, /60%.*kernel.*40%.*compiler/is);
+  assert.match(app, /AI agents must not claim bounties/);
+  assert.match(guide, /Route simulator findings to the correct repository/);
+  assert.match(guide, /TT-MLIR lit\/FileCheck coverage/);
+  assert.match(guide, /tt-emule/);
+  assert.equal(publishedGuide, guide);
 });
 
 test("publishes a guarded Wormhole, Blackhole and Quasar source comparison", async () => {

@@ -9,6 +9,7 @@ const documents = [
   "BLACKHOLE_VS_HUAWEI_ASCEND.md",
   "ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md",
   "RISC_FIRMWARE_TO_KERNEL_FLOW.md",
+  "CONTRIBUTION_ROADMAP.md",
 ];
 
 await mkdir(new URL("../public/", import.meta.url), { recursive: true });

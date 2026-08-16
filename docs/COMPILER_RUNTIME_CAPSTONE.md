@@ -148,7 +148,12 @@ fused_linear_relu(A, B, bias)
 ```
 
 The starter files use generic quoted operations so they can be parsed before a
-custom dialect exists. Then define real operations and a `RewritePattern`.
+custom dialect exists. Use them to learn the legality checks, but do not stop
+at a private toy dialect. Re-express the experiment with an existing TT-MLIR
+TTIR/TTNN or D2M path, then implement or extend the relevant
+`RewritePattern`. The contribution-sized artifact is a real before/after IR
+contract with lit/FileCheck coverage, not merely a textually fused `lab.*`
+fixture.
 
 The pattern must reject:
 
