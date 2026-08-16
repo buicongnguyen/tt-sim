@@ -152,8 +152,13 @@ test("publishes the hardware-free contribution roadmap", async () => {
   assert.match(app, /id="contribute"/);
   assert.match(app, /Kernel first, compiler connected/);
   assert.match(app, /60%.*kernel.*40%.*compiler/is);
+  assert.match(app, /TT-MLIR × TT-Metal/);
+  assert.match(app, /TTIR → TTNN → FlatBuffer → ttrt → TT-Metal/);
+  assert.match(app, /TTIR → D2M → TTKernel \+ TTMetal/);
   assert.match(app, /AI agents must not claim bounties/);
   assert.match(guide, /Route simulator findings to the correct repository/);
+  assert.match(guide, /How TT-MLIR combines with TT-Metal/);
+  assert.match(guide, /compiler-only, simulator-backed and hardware-verified evidence/);
   assert.match(guide, /TT-MLIR lit\/FileCheck coverage/);
   assert.match(guide, /tt-emule/);
   assert.equal(publishedGuide, guide);

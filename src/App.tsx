@@ -222,6 +222,13 @@ const kernelLearningPath = [
   { number: "05", title: "Lower the same op", layer: "TTIR/TTNN/D2M → TTMetal", proof: "Before/after IR and negative tests prove the legal transformation." },
 ] as const;
 
+const mlirMetalBridge = [
+  { number: "01", name: "TTIR", role: "Tensor contract", detail: "Shapes, dtypes, layouts and operation semantics enter the Tenstorrent compiler." },
+  { number: "02", name: "TTNN or D2M", role: "Choose the backend", detail: "TTNN preserves library-level ops; D2M makes grids, data movement and generic compute explicit." },
+  { number: "03", name: "TTKernel + TTMetal", role: "Materialize the program", detail: "Device kernels expose NoC, CB and tile operations; host IR allocates buffers and enqueues programs." },
+  { number: "04", name: "FlatBuffer + ttrt", role: "Cross the runtime boundary", detail: "The serialized program is inspected or run by ttrt; its TTNN runtime uses TT-Metal for device access." },
+] as const;
+
 const contributionPhases = [
   { range: "Weeks 1–3", title: "Runtime mechanics", body: "Loopback, one streaming pipeline, elementwise, matmul and two intentional protocol failures." },
   { range: "Weeks 4–6", title: "Differential bug harness", body: "PyTorch or NumPy versus TTNN on Wormhole and Blackhole across domains, dtypes, layouts and memory." },
@@ -851,6 +858,18 @@ function App() {
             {kernelLearningPath.map((item, index) => <article key={item.number}><header><span>{item.number}</span><small>{item.layer}</small></header><h3>{item.title}</h3><p>{item.proof}</p>{index < kernelLearningPath.length - 1 && <i aria-hidden="true">→</i>}</article>)}
           </div>
 
+          <div className="mlir-metal-bridge">
+            <div className="bridge-heading"><div><p className="eyebrow">TT-MLIR × TT-Metal</p><h3>Compile the contract; execute the materialized program.</h3></div><p>TT-MLIR is not a replacement for TT-Metal. It decides layouts, transformations and program structure, serializes the result, then the runtime relies on TTNN and TT-Metal to communicate with the device.</p></div>
+            <div className="bridge-path" aria-label="TT-MLIR to TT-Metal integration path">
+              {mlirMetalBridge.map((stage, index) => <article key={stage.number}><header><span>{stage.number}</span><small>{stage.role}</small></header><h4>{stage.name}</h4><p>{stage.detail}</p>{index < mlirMetalBridge.length - 1 && <i aria-hidden="true">→</i>}</article>)}
+            </div>
+            <div className="bridge-lanes">
+              <article><span>LANE A · END-TO-END</span><h4>TTIR → TTNN → FlatBuffer → ttrt → TT-Metal</h4><p>Use this when the output should remain a sequence of TTNN operations. With a runtime-enabled build, <code>ttrt</code> executes those operations through TT-Metal. Final runtime execution still needs a supported device environment.</p></article>
+              <article><span>LANE B · DIRECT TO METAL</span><h4>TTIR → D2M → TTKernel + TTMetal</h4><p>Use this to study scheduling, explicit data movement and generated kernels. Treat direct TTMetal execution as branch-dependent compiler work; prove the lowering with IR and tests before claiming runtime coverage.</p></article>
+            </div>
+            <div className="bridge-workflow"><strong>No-device workflow</strong><p>Build the offline compiler, lower the same small op through both targets, inspect TTKernel/TTMetal IR, add lit/FileCheck and negative tests, then validate the equivalent TT-Metal or TTNN program separately with <code>ttsim</code> or <code>tt-emule</code>. When hardware or cloud access becomes available, enable the runtime and close the loop with <code>ttrt</code>.</p></div>
+          </div>
+
           <div className="contribution-boundary"><div><p className="eyebrow">No-hardware contribution map</p><h3>Use each project for the job it can accept.</h3><p><b>ttsim finds and localizes failures.</b> <b>tt-metal and tt-mlir accept fixes.</b> <b>tt-emule is the cleanest first code-contribution lane without a card.</b></p></div><a href="./CONTRIBUTION_ROADMAP.md">Open the complete reviewed roadmap ↗</a></div>
 
           <div className="contribution-lanes" role="table" aria-label="Tenstorrent hardware-free contribution lanes">
@@ -866,7 +885,7 @@ function App() {
 
           <div className="contribution-verdict"><p className="eyebrow">The target identity</p><h3>Compiler/runtime engineer—not only kernel author, not only model porter.</h3><p>Build the kernel foundation deeply enough to explain the machine, then connect it to the compiler decisions that create the program. Model bring-up becomes the later integration proof.</p></div>
 
-          <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://github.com/tenstorrent/ttsim">ttsim boundary ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/main/CONTRIBUTING.md">TT-Metal contributing ↗</a><a href="https://github.com/tenstorrent/tt-mlir">TT-MLIR ↗</a><a href="https://github.com/tenstorrent/tt-emule">tt-emule ↗</a><a href="https://docs.tenstorrent.com/bounty_terms.html">Bounty terms ↗</a></div></div>
+          <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://github.com/tenstorrent/ttsim">ttsim boundary ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/main/CONTRIBUTING.md">TT-Metal contributing ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/overview.html">TT-MLIR dialect flow ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/builder/ttir-builder.html">TTIR builder targets ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/ttrt.html">ttrt runtime ↗</a><a href="https://github.com/tenstorrent/tt-emule">tt-emule ↗</a><a href="https://docs.tenstorrent.com/bounty_terms.html">Bounty terms ↗</a></div></div>
         </section>
 
         <section id="debug" className="content-section debug-section">

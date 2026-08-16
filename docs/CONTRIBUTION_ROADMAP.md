@@ -105,6 +105,84 @@ educational dialect.
 **Exit gate:** before/after IR proves what changed, negative tests prove what
 must not change, and the lowering can be related back to the Metalium program.
 
+## How TT-MLIR combines with TT-Metal
+
+TT-MLIR and TT-Metal own different parts of one stack. TT-MLIR represents and
+transforms the program; TT-Metal provides the host runtime, device interaction
+and kernels that ultimately perform the work. The useful mental model is:
+
+```text
+frontend or TTIR builder
+  → TTIR: tensor semantics, shapes, dtypes and layouts
+  ├─→ TTNN: library-level operations
+  │     → TTNN FlatBuffer → ttrt → TTNN runtime → TT-Metal
+  └─→ D2M: grids, generic compute and explicit data movement
+        → TTKernel device IR + TTMetal host/device IR
+        → FlatBuffer or generated code
+```
+
+The dialect boundary maps directly onto runtime responsibilities:
+
+| Layer | Compiler/runtime responsibility | What to inspect |
+|---|---|---|
+| TTIR | Describes tensor computation and layout intent | Op verification, shapes, dtypes and `to_layout` operations |
+| TTNN | Models the TTNN API at a high level | Operation selection, layouts, allocation and deallocation |
+| D2M | Makes direct-to-metal dispatch and generic compute explicit | Grids, iterators, tiling, data movement and scheduling |
+| TTKernel | Models low-level TT-Metal device kernels approximately one-to-one | NoC operations, circular buffers, tile registers and SFPU/FPU work |
+| TTMetal | Models host/device interoperation | Buffer creation, transfers, program construction and enqueue operations |
+| FlatBuffer + `ttrt` | Carries compiler output across the runtime boundary | Version, system descriptor, golden tensors, callbacks and runtime logs |
+| TT-Metal | Owns device discovery, queues, buffers, dispatch and kernel execution | Runtime arguments, command queues, JIT artifacts and device traces |
+
+### Lane A: TTNN backend for end-to-end integration
+
+Use `TTIR → TTNN → FlatBuffer → ttrt` when the compiled program should remain
+a sequence of TTNN library operations. A runtime-enabled TT-MLIR build uses
+TT-Metal for operation execution and device interfacing. TT-MLIR's environment
+also provides `TT_METAL_RUNTIME_ROOT`; keep the compiler and the TT-Metal
+dependency selected by that environment aligned instead of mixing arbitrary
+revisions.
+
+This is the clearest route for model-level integration, golden-tensor checks
+and runtime callbacks. The important proof is not only that a FlatBuffer was
+created: show the TTNN IR, the serialized program, the TT-Metal runtime log and
+the result comparison.
+
+### Lane B: D2M for low-level compiler expertise
+
+Use `TTIR → D2M → TTKernel + TTMetal` when the objective is to understand or
+improve scheduling, explicit data movement and generated device kernels.
+TTKernel exposes concepts that map closely to TT-Metal kernel APIs, while the
+TTMetal dialect describes the host-side buffer and enqueue program.
+
+This is the better lane for connecting compiler decisions to the low-level
+skills learned in `ttsim`: a `ttkernel.noc_async_read`, circular-buffer
+operation or tile computation should be traceable to the equivalent Metalium
+mechanism. Direct TTMetal runtime coverage is branch- and feature-dependent;
+prove compiler behavior with IR and tests before claiming that the generated
+program executes end to end.
+
+### Practical workflow without a device
+
+1. Build the offline TT-MLIR compiler and run `check-ttmlir`.
+2. Create one small TTIR builder fixture, such as add or matmul.
+3. Compile the same fixture with `target="ttnn"` and `target="ttmetal"`.
+4. Save TTIR, TTNN, D2M, TTKernel and TTMetal IR wherever the selected pipeline
+   emits them.
+5. Add a lit/FileCheck test for the intended lowering and a negative test for
+   an illegal shape, layout or rewrite.
+6. Map each emitted TTKernel/TTMetal operation to the corresponding TT-Metal
+   kernel or host API.
+7. Validate an equivalent hand-written TT-Metal or TTNN program with `ttsim`
+   or `tt-emule`. Treat this as separate runtime evidence, not proof that the
+   TT-MLIR FlatBuffer itself ran.
+8. When a supported device or cloud system becomes available, build with
+   `-DTTMLIR_ENABLE_RUNTIME=ON`, generate the matching system descriptor and
+   use `ttrt run` to close the end-to-end loop.
+
+**Exit gate:** a portfolio artifact contains both lowering lanes, before/after
+IR, one negative compiler test, the TT-Metal API mapping and an explicit label
+for compiler-only, simulator-backed and hardware-verified evidence.
+
 ## Route simulator findings to the correct repository
 
 | Signal | First interpretation | Likely action |
@@ -199,6 +277,11 @@ unvalidated refactor.
 - [TT-Metal unassigned bounty filter](https://github.com/tenstorrent/tt-metal/issues?q=is%3Aissue%20state%3Aopen%20label%3Abounty%20no%3Aassignee)
 - [Tenstorrent bounty terms](https://docs.tenstorrent.com/bounty_terms.html)
 - [TT-MLIR repository](https://github.com/tenstorrent/tt-mlir)
+- [TT-MLIR dialect and architecture overview](https://docs.tenstorrent.com/tt-mlir/overview.html)
+- [TTIR builder TTNN and TTMetal targets](https://docs.tenstorrent.com/tt-mlir/builder/ttir-builder.html)
+- [`ttrt` runtime and TT-Metal integration](https://docs.tenstorrent.com/tt-mlir/ttrt.html)
+- [TT-MLIR build and runtime dependency setup](https://docs.tenstorrent.com/tt-mlir/getting-started)
+- [TT-MLIR compiler and runtime project structure](https://docs.tenstorrent.com/tt-mlir/project-structure.html)
 - [TT-MLIR open bounty filter](https://github.com/tenstorrent/tt-mlir/issues?q=is%3Aissue%20state%3Aopen%20label%3Abounty)
 - [tt-emule: hardware-free Metal host and kernel API emulation](https://github.com/tenstorrent/tt-emule)
 - [`ttnn.i0` simulator-backed numerical bounty](https://github.com/tenstorrent/tt-metal/issues/50465)
