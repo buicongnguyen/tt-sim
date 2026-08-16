@@ -19,8 +19,10 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("TENSTORRENT_GENERATION_COMPARISON.md", root));
   await access(new URL("BLACKHOLE_VS_HUAWEI_ASCEND.md", root));
   await access(new URL("ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md", root));
+  await access(new URL("RISC_FIRMWARE_TO_KERNEL_FLOW.md", root));
   await access(new URL("huawei.html", root));
   await access(new URL("async-kernels.html", root));
+  await access(new URL("firmware-flow.html", root));
 });
 
 test("publishes the WSL agent and host-to-device trace plan", async () => {
@@ -204,6 +206,28 @@ test("publishes the asynchronous kernel and matrix granularity field note", asyn
   assert.match(report, /noc_async_writes_flushed/);
   assert.match(report, /16×32 × 32×16 → 16×16 output/);
   assert.match(report, /Huawei matrix granularity/);
+  assert.equal(publishedReport, report);
+});
+
+test("publishes the host-to-RISC firmware and operation-kernel flow", async () => {
+  const html = await readFile(new URL("firmware-flow.html", root), "utf8");
+  const app = await readFile(new URL("../src/FirmwareFlowApp.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/firmware-flow.css", root), "utf8");
+  const report = await readFile(new URL("../docs/RISC_FIRMWARE_TO_KERNEL_FLOW.md", root), "utf8");
+  const publishedReport = await readFile(new URL("RISC_FIRMWARE_TO_KERNEL_FLOW.md", root), "utf8");
+  assert.match(html, /Host to RISC firmware flow/);
+  assert.match(html, /(?:src|href)="\.\/assets\//);
+  assert.match(app, /Five RISCs/);
+  assert.match(app, /No firmware relay/);
+  assert.match(app, /DM0–DM7/);
+  assert.match(app, /Run it twice/);
+  assert.match(styles, /\.risc-sequence/);
+  assert.match(styles, /\.phase-workbench/);
+  assert.match(report, /NCRISC is not a firmware relay/);
+  assert.match(report, /ProgramBinaryStatus::Committed/);
+  assert.match(report, /Chunk B1–B2/);
+  assert.match(report, /Chunk R6–R8/);
+  assert.ok((report.match(/```mermaid/g) ?? []).length >= 10);
   assert.equal(publishedReport, report);
 });
 

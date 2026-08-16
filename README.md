@@ -33,6 +33,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - Architecture comparison: <https://buicongnguyen.github.io/tt-sim/#generations>
 - Blackhole versus Huawei Ascend: <https://buicongnguyen.github.io/tt-sim/huawei.html>
 - Async kernels and matrix granularity: <https://buicongnguyen.github.io/tt-sim/async-kernels.html>
+- Host-to-RISC firmware and operation-kernel flow: <https://buicongnguyen.github.io/tt-sim/firmware-flow.html>
 
 ## Repository map
 
@@ -52,9 +53,11 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `docs/TENSTORRENT_GENERATION_COMPARISON.md` — Wormhole/Blackhole/Quasar code and product comparison
 - `docs/BLACKHOLE_VS_HUAWEI_ASCEND.md` — memory, dataflow, software and scaling comparison
 - `docs/ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md` — NoC/CB/register synchronization, LLK MVMUL geometry and Huawei equivalents
+- `docs/RISC_FIRMWARE_TO_KERNEL_FLOW.md` — source-linked BRISC/NCRISC/TRISC build, boot, dispatch and warm-launch analysis
 - `scripts/05-architecture-evidence.sh` — reproducible descriptor and architecture-LLK audit
 - `huawei.html` — dedicated Blackhole versus Huawei Ascend Pages route
 - `async-kernels.html` — dedicated asynchronous-kernel and matrix-granularity Pages route
+- `firmware-flow.html` — dedicated host-to-RISC firmware and operation-kernel Pages route
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope

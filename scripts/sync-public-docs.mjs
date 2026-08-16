@@ -8,6 +8,7 @@ const documents = [
   "TENSTORRENT_GENERATION_COMPARISON.md",
   "BLACKHOLE_VS_HUAWEI_ASCEND.md",
   "ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md",
+  "RISC_FIRMWARE_TO_KERNEL_FLOW.md",
 ];
 
 await mkdir(new URL("../public/", import.meta.url), { recursive: true });
