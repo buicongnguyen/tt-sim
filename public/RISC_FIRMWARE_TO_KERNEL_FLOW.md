@@ -101,26 +101,39 @@ sequenceDiagram
     participant TR as TRISC0, TRISC1 and TRISC2
     participant CQ as Dispatch-core prefetch and dispatch
 
-    MC->>JIT: Create firmware build states
-    JIT->>JIT: Compile and link each RISC target
-    JIT-->>MC: BRISC, NCRISC and 3 TRISC ELF images
-    MC->>L1: Initialize tables, launch ring and INIT/GO state
+    MC->>JIT: [B1] Create firmware build states
+    JIT->>JIT: [B2] Compile and link each RISC target
+    JIT-->>MC: [B2] BRISC, NCRISC and 3 TRISC ELF images
+    MC->>L1: [B3] Initialize tables, launch ring and INIT/GO state
     loop Every firmware target
-        MC->>L1: Multicast ELF spans to its HAL firmware base
+        MC->>L1: [B4] Multicast ELF spans to its HAL firmware base
     end
-    MC->>BR: Deassert BRISC reset
-    BR->>BR: Set reset PCs for NCRISC and TRISCs
-    BR->>NC: Deassert reset and request INIT
-    BR->>TR: Deassert resets and request INIT
+    MC->>BR: [B5] Deassert BRISC reset
+    BR->>BR: [B6] Set reset PCs for NCRISC and TRISCs
+    BR->>NC: [B6] Deassert reset and request INIT
+    BR->>TR: [B6] Deassert resets and request INIT
     par NCRISC initialization
-        NC-->>BR: RUN_MSG_DONE
+        NC-->>BR: [B7] RUN_MSG_DONE
     and TRISC initialization
-        TR-->>BR: RUN_MSG_DONE
+        TR-->>BR: [B7] RUN_MSG_DONE
     end
-    BR-->>MC: Publish worker initialization DONE
-    MC->>CQ: Install persistent command-queue Programs
-    CQ->>CQ: Enter prefetch and dispatch loops
+    BR-->>MC: [B7] Publish worker initialization DONE
+    MC->>CQ: [B8] Install persistent command-queue Programs
+    CQ->>CQ: [B8] Enter prefetch and dispatch loops
 ```
+
+### Direct code links for the B-markers
+
+| Marker in graph | Exact code location | Transition proved |
+|---|---|---|
+| B1 | [`metal_context.cpp:283–307`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/metal_context.cpp#L283-L307) and [`build_env_manager.cpp:340–358`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/jit_build/build_env_manager.cpp#L340-L358) | Context starts firmware build and chooses precompiled/JIT construction |
+| B2 | [`build.cpp:628–790`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/jit_build/build.cpp#L628-L790) | Compile, link and weaken firmware symbols |
+| B3 | [`risc_firmware_initializer.cpp:1053–1123`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1053-L1123) | Host initializes tables, launch ring and GO state |
+| B4 | [`risc_firmware_initializer.cpp:1143–1199`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1143-L1199) | Host loads every selected RISC firmware binary |
+| B5 | [`risc_firmware_initializer.cpp:1495–1532`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1495-L1532) | Host releases the worker boot RISC and waits for initialization |
+| B6 | [`brisc.cc:181–275`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L181-L275) | BRISC sets subordinate PCs and releases NCRISC/TRISCs |
+| B7 | [`brisc.cc:354–387`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L354-L387) | BRISC waits for and publishes initialization completion |
+| B8 | [`dispatch_kernel_initializer.cpp:119–203`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/device/firmware/dispatch_kernel_initializer.cpp#L119-L203) | Host constructs and installs persistent CQ Programs |
 
 ### Code evidence for sequence 1
 
@@ -128,10 +141,10 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    F[BRISC, NCRISC and TRISC firmware sources] --> J[Compile and link]
-    J --> E[Five firmware ELFs]
-    E --> W[Weaken exported firmware symbols]
-    W --> K[Later operation kernels link against the firmware ABI]
+    F[B1 · Firmware build states] --> J[B2 · Compile and link]
+    J --> E[B2 · Five firmware ELFs]
+    E --> W[B2 · Weaken exported firmware symbols]
+    W --> K[Operation kernels link against the firmware ABI]
 ```
 
 This chunk explains build dependency, not device execution order. Firmware is
@@ -144,11 +157,11 @@ sequenceDiagram
     participant H as Host initializer
     participant HAL as HAL memory map
     participant L1 as Worker L1
-    H->>HAL: Ask for each RISC firmware base
+    H->>HAL: [B3] Ask for each RISC firmware base
     loop BRISC, NCRISC, TRISC0, TRISC1, TRISC2
-        H->>L1: Write this ELF's spans to its assigned region
+        H->>L1: [B4] Write this ELF's spans to its assigned region
     end
-    H->>L1: Write INIT launch-ring state
+    H->>L1: [B3] Write INIT launch-ring state
 ```
 
 The host is the writer in this chunk. None of the worker RISCs is acting as a
@@ -161,10 +174,10 @@ sequenceDiagram
     participant H as Host
     participant BR as BRISC
     participant S as NCRISC and TRISCs
-    H->>BR: Deassert BRISC reset
-    BR->>S: Set reset PCs and deassert reset
-    S-->>BR: INIT DONE
-    BR-->>H: Worker initialization DONE
+    H->>BR: [B5] Deassert BRISC reset
+    BR->>S: [B6] Set reset PCs and deassert reset
+    S-->>BR: [B7] INIT DONE
+    BR-->>H: [B7] Worker initialization DONE
 ```
 
 This is the actual supervisor relationship on the inspected Wormhole and
@@ -174,9 +187,9 @@ Blackhole worker path: host starts BRISC; BRISC initializes subordinates.
 
 ```mermaid
 flowchart LR
-    H[Host DispatchKernelInitializer] --> P[Build CQ Programs]
-    P --> C[Configure selected dispatch cores]
-    C --> L[Prefetch and dispatch persistent loops]
+    H[B8 · Host DispatchKernelInitializer] --> P[B8 · Build CQ Programs]
+    P --> C[B8 · Configure selected dispatch cores]
+    C --> L[B8 · Prefetch and dispatch persistent loops]
     L --> W[Later worker launch commands]
 ```
 
@@ -228,15 +241,17 @@ symbols without becoming the firmware itself.
 
 ```mermaid
 flowchart LR
-    D[Data-movement source] --> DM0[BRISC or DM0 ELF]
-    D -. selected instead .-> DM1[NCRISC or DM1 ELF]
-    C[One compute source] --> U[TRISC0 / UNPACK ELF]
-    C --> M[TRISC1 / MATH ELF]
-    C --> P[TRISC2 / PACK ELF]
+    D[K1 · Data-movement source] --> DM0[K1 · BRISC or DM0 ELF]
+    D -. selected instead .-> DM1[K1 · NCRISC or DM1 ELF]
+    C[K1 · One compute source] --> U[K1 · TRISC0 / UNPACK ELF]
+    C --> M[K1 · TRISC1 / MATH ELF]
+    C --> P[K1 · TRISC2 / PACK ELF]
 ```
 
 This build graph is deliberately small: it shows binary multiplicity without
-mixing in upload or launch order.
+mixing in upload or launch order. **K1 code:**
+[`kernel.cpp:900–955`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/kernels/kernel.cpp#L900-L955)
+selects the DM processor and produces the three compute variants.
 
 ## Sequence 2: first operation and warm relaunch
 
@@ -258,40 +273,54 @@ sequenceDiagram
     participant TR as TRISC0, TRISC1 and TRISC2
 
     alt First use or cache miss
-        H->>JIT: Compile the Program
-        JIT-->>H: Selected DM binaries plus 3 TRISC binaries
-        H->>H: Pack ELF spans into page-aligned binary_data
-        H->>HCQ: Enqueue binary-data upload
-        HCQ->>PD: Transfer upload command
-        PD->>DRAM: Store program binary pages
+        H->>JIT: [R1] Compile the Program
+        JIT-->>H: [R1] Selected DM binaries plus 3 TRISC binaries
+        H->>H: [R2] Pack ELF spans into page-aligned binary_data
+        H->>HCQ: [R2] Enqueue binary-data upload
+        HCQ->>PD: [R2] Transfer upload command
+        PD->>DRAM: [R2] Store program binary pages
     else Warm launch
-        H->>H: Reuse compiled Program and committed binaries
+        H->>H: [R0] Reuse compiled Program and committed binaries
     end
 
-    H->>HCQ: Enqueue runtime args, config and launch commands
-    HCQ->>PD: Prefetch host command stream
-    PD->>L1: Write runtime arguments and kernel configuration
+    H->>HCQ: [R3] Enqueue runtime args, config and launch commands
+    HCQ->>PD: [R3] Prefetch host command stream
+    PD->>L1: [R4] Write runtime arguments and kernel configuration
     opt Binary pages are not already resident
-        PD->>L1: Move operation-kernel pages to worker L1
+        PD->>L1: [R4] Move operation-kernel pages to worker L1
     end
-    PD->>L1: Write launch message
-    PD->>PD: NoC write barrier
-    PD->>BR: Send GO
+    PD->>L1: [R4] Write launch message
+    PD->>PD: [R5] NoC write barrier
+    PD->>BR: [R5] Send GO
 
-    BR->>NC: Send LOAD and GO notification
-    BR->>TR: Start enabled TRISCs
+    BR->>NC: [R6] Send LOAD and GO notification
+    BR->>TR: [R6] Start enabled TRISCs
     par DM0 work
-        BR->>BR: Call BRISC operation-kernel entry point
+        BR->>BR: [R6] Call BRISC operation-kernel entry point
     and DM1 work
-        NC->>NC: Configure and call NCRISC operation kernel
+        NC->>NC: [R7] Configure and call NCRISC operation kernel
     and Compute work
-        TR->>TR: Run unpack, math and pack entry points
+        TR->>TR: [R7] Run unpack, math and pack entry points
     end
-    NC-->>BR: DONE
-    TR-->>BR: DONE
-    BR-->>PD: Worker completion notification
-    PD-->>H: Command completion or event
+    NC-->>BR: [R7] DONE
+    TR-->>BR: [R7] DONE
+    BR-->>PD: [R8] Worker completion notification
+    PD-->>H: [R8] Command completion or event
 ```
+
+### Direct code links for the R-markers
+
+| Marker in graph | Exact code location | Transition proved |
+|---|---|---|
+| R0 | [`dispatch.cpp:3246–3261`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L3246-L3261) | Committed/warm binary branch can omit binary transfer |
+| R1 | [`kernel.cpp:900–955`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/kernels/kernel.cpp#L900-L955) | Build selected DM target and three compute variants |
+| R2 | [`program.cpp:2134–2225`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/program.cpp#L2134-L2225) and [`mesh_workload.cpp:124–195`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/distributed/mesh_workload.cpp#L124-L195) | Flatten ELF spans and upload the replicated binary buffer |
+| R3 | [`dispatch.cpp:3169–3277`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L3169-L3277) | Assemble host-CQ runtime/config/binary/launch/GO order |
+| R4 | [`dispatch.cpp:1647–1921`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L1647-L1921) and [`dispatch.cpp:2128–2336`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L2128-L2336) | Build binary-placement and launch-message writes |
+| R5 | [`dispatch.cpp:2355–2422`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L2355-L2422) | Place NoC ordering barrier before GO |
+| R6 | [`brisc.cc:389–542`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L389-L542) | BRISC consumes GO, configures the run and starts peers |
+| R7 | [`ncrisc.cc:126–192`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/ncrisc.cc#L126-L192) and [`trisc.cc:152–223`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/trisc.cc#L152-L223) | NCRISC and TRISCs call their operation entry points and finish |
+| R8 | [`brisc.cc:574–592`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L574-L592) | BRISC publishes operation completion |
 
 ### Code evidence for sequence 2
 
@@ -299,9 +328,9 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    P[Compile Program] --> E[DM and TRISC ELF spans]
-    E --> B[Page-aligned binary_data]
-    B --> D[Replicated device binary buffer]
+    P[R1 · Compile Program] --> E[R1 · DM and TRISC ELF spans]
+    E --> B[R2 · Page-aligned binary_data]
+    B --> D[R2 · Replicated device binary buffer]
 ```
 
 Upload to the device binary buffer and placement into a worker's executable L1
@@ -315,10 +344,10 @@ sequenceDiagram
     participant D as Device dispatcher
     participant L1 as Worker L1
     participant BR as BRISC
-    H->>D: Runtime args, config and program commands
-    D->>L1: Args, config, optional binaries, launch message
-    D->>D: NoC write barrier
-    D->>BR: GO
+    H->>D: [R3] Runtime args, config and program commands
+    D->>L1: [R4] Args, config, optional binaries, launch message
+    D->>D: [R5] NoC write barrier
+    D->>BR: [R5] GO
 ```
 
 The barrier is the boundary between state placement and execution. A GO before
@@ -333,16 +362,16 @@ sequenceDiagram
     participant NC as NCRISC / DM1
     participant TR as TRISC0, TRISC1 and TRISC2
     participant D as Dispatcher
-    BR->>NC: LOAD and GO
-    BR->>TR: Start enabled compute threads
+    BR->>NC: [R6] LOAD and GO
+    BR->>TR: [R6] Start enabled compute threads
     par Kernel roles run
-        BR->>BR: Call DM0 entry point
-        NC->>NC: Call DM1 entry point
-        TR->>TR: Call UNPACK, MATH and PACK entry points
+        BR->>BR: [R6] Call DM0 entry point
+        NC->>NC: [R7] Call DM1 entry point
+        TR->>TR: [R7] Call UNPACK, MATH and PACK entry points
     end
-    NC-->>BR: DONE
-    TR-->>BR: DONE
-    BR-->>D: Worker completion
+    NC-->>BR: [R7] DONE
+    TR-->>BR: [R7] DONE
+    BR-->>D: [R8] Worker completion
 ```
 
 The persistent firmware remains in control around the call. The user operation
@@ -352,10 +381,10 @@ kernel is entered and returned from; it is not a new boot image.
 
 ```mermaid
 flowchart TD
-    Q{Program binaries committed?}
-    Q -- No --> U[Upload and place required binaries]
-    Q -- Yes --> R[Reuse resident or committed binaries]
-    U --> L[Write launch state and issue GO]
+    Q{R0 · Program binaries committed?}
+    Q -- No --> U[R2/R4 · Upload and place required binaries]
+    Q -- Yes --> R[R0 · Reuse resident or committed binaries]
+    U --> L[R3/R5 · Write launch state and issue GO]
     R --> L
 ```
 
@@ -430,16 +459,19 @@ resident firmware calls operation kernels
 
 ```mermaid
 flowchart LR
-    G[TTNN graph] --> O[Ordered operations]
-    O --> P[TT-Metal Programs]
-    P --> C{Compile/cache result}
-    C --> Q[Command queue launches]
-    Q --> R[Resident firmware calls kernels]
+    G[M1 · TTNN graph] --> O[M1 · Ordered operations]
+    O --> P[M1 · TT-Metal Programs]
+    P --> C{M2 · Compile/cache result}
+    C --> Q[M2 · Command queue launches]
+    Q --> R[M3 · Resident firmware calls kernels]
 ```
 
 This smaller graph describes the software abstraction boundary. It deliberately
 omits individual RISCs because the preceding R3–R8 chunks already explain that
-lower layer.
+lower layer. **Direct code:** [M1 workload ordering in
+`distributed.cpp:115–127`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/distributed/distributed.cpp#L115-L127),
+[M2 command sequence in `dispatch.cpp:3169–3277`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L3169-L3277),
+and [M3 worker calls in `brisc.cc:389–592`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L389-L592).
 
 Model weights and activation buffers may be uploaded independently of kernel
 code. A model does not normally carry a new BRISC/NCRISC/TRISC firmware image
@@ -464,15 +496,17 @@ BRISC, NCRISC and three TRISCs would hide a real architectural change.
 
 ```mermaid
 flowchart LR
-    H[Host and tt-2xx HAL] --> D[DM0 through DM7]
-    D --> N0[NEO 0: TRISC0 through TRISC3]
-    D --> N1[NEO 1: TRISC0 through TRISC3]
-    D --> N2[NEO 2: TRISC0 through TRISC3]
-    D --> N3[NEO 3: TRISC0 through TRISC3]
+    H[Q1 · Host and tt-2xx HAL] --> D[Q1 · DM0 through DM7]
+    D --> N0[Q1 · NEO 0: TRISC0 through TRISC3]
+    D --> N1[Q1 · NEO 1: TRISC0 through TRISC3]
+    D --> N2[Q1 · NEO 2: TRISC0 through TRISC3]
+    D --> N3[Q1 · NEO 3: TRISC0 through TRISC3]
 ```
 
 This is a topology cue, not a claim that every DM directly launches every NEO
 thread. The detailed Quasar sequence must follow the tt-2xx reset and GO code.
+**Q1 code:** [tt-2xx thread indices in `hw_thread.h:23–28`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/internal/hw_thread.h#L23-L28)
+and [DM0 supervision in `tt-2xx/dm.cc:250–395`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-2xx/dm.cc#L250-L395).
 
 ## Repeatable validation experiment
 

@@ -9,6 +9,8 @@ const phases = {
     question: "Which executable belongs to which RISC and lifetime?",
     evidence: "HAL thread IDs, compile macros, firmware source selection and per-processor load addresses.",
     gate: "Keep tt-1xx Wormhole/Blackhole separate from tt-2xx Quasar.",
+    source: "hw_thread.h · lines 23–35",
+    url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/internal/hw_thread.h#L23-L35",
   },
   boot: {
     number: "02",
@@ -16,6 +18,8 @@ const phases = {
     question: "Who writes each firmware image, and which processor leaves reset first?",
     evidence: "RiscFirmwareInitializer host writes plus BRISC reset-PC and subordinate-init code.",
     gate: "Every diagram arrow must have a caller, receiver and observable state change.",
+    source: "risc_firmware_initializer.cpp · lines 1053–1199",
+    url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1053-L1199",
   },
   dispatch: {
     number: "03",
@@ -23,6 +27,8 @@ const phases = {
     question: "How do persistent prefetch and dispatch programs differ from worker firmware?",
     evidence: "DispatchKernelInitializer, CQ Program configuration and device-side persistent loops.",
     gate: "Do not label command-queue Programs as BRISC/NCRISC boot firmware.",
+    source: "dispatch_kernel_initializer.cpp · lines 119–203",
+    url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/device/firmware/dispatch_kernel_initializer.cpp#L119-L203",
   },
   operation: {
     number: "04",
@@ -30,36 +36,38 @@ const phases = {
     question: "What crosses the host/device boundary on first use and on a warm launch?",
     evidence: "Program ELF packing, replicated binary buffer, dispatch command order, GO and worker completion.",
     gate: "Prove caching by comparing two identical Program launches.",
+    source: "dispatch.cpp · lines 3169–3277",
+    url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L3169-L3277",
   },
 } as const;
 
 const objectLayers = [
-  { number: "A", title: "Base RISC firmware", lifetime: "DEVICE SESSION", detail: "Separate BRISC, NCRISC and TRISC0/1/2 control-loop ELFs loaded before worker release." },
-  { number: "B", title: "Fast-dispatch Programs", lifetime: "CQ SESSION", detail: "Persistent prefetch and dispatch kernels installed on selected command-queue cores." },
-  { number: "C", title: "Operation kernels", lifetime: "PROGRAM CACHE", detail: "Selected DM binary or binaries plus three compute binaries generated for UNPACK, MATH and PACK." },
-  { number: "D", title: "Launch state", lifetime: "EVERY ENQUEUE", detail: "Runtime arguments, kernel configuration, launch message, barriers and GO." },
+  { number: "A", title: "Base RISC firmware", lifetime: "DEVICE SESSION", detail: "Separate BRISC, NCRISC and TRISC0/1/2 control-loop ELFs loaded before worker release.", source: "initialize_firmware()", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1053-L1199" },
+  { number: "B", title: "Fast-dispatch Programs", lifetime: "CQ SESSION", detail: "Persistent prefetch and dispatch kernels installed on selected command-queue cores.", source: "DispatchKernelInitializer", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/device/firmware/dispatch_kernel_initializer.cpp#L119-L203" },
+  { number: "C", title: "Operation kernels", lifetime: "PROGRAM CACHE", detail: "Selected DM binary or binaries plus three compute binaries generated for UNPACK, MATH and PACK.", source: "Kernel::generate_binaries", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/kernels/kernel.cpp#L900-L955" },
+  { number: "D", title: "Launch state", lifetime: "EVERY ENQUEUE", detail: "Runtime arguments, kernel configuration, launch message, barriers and GO.", source: "Program command sequence", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L3169-L3277" },
 ] as const;
 
 const bootSteps = [
-  { id: "B1", from: "MetalContext", to: "JIT", title: "Create firmware build states", detail: "Build or reuse separate firmware targets for BRISC, NCRISC and the three TRISCs." },
-  { id: "B2", from: "JIT", to: "MetalContext", title: "Return five ELF images", detail: "Firmware is linked first and its exported symbols support later operation-kernel linking." },
-  { id: "B3", from: "Host", to: "Worker L1", title: "Initialize launch state", detail: "The host writes firmware tables, launch-ring fields and INIT/GO state." },
-  { id: "B4", from: "Host", to: "Worker L1", title: "Load every firmware image", detail: "Each ELF span is multicast to the HAL address assigned to its processor." },
-  { id: "B5", from: "Host", to: "BRISC", title: "Release the supervisor", detail: "On Wormhole and Blackhole, BRISC is the first worker RISC released by the host." },
-  { id: "B6", from: "BRISC", to: "NCRISC + TRISCs", title: "Set reset PCs and initialize", detail: "BRISC releases the subordinate processors and requests their initialization." },
-  { id: "B7", from: "NCRISC + TRISCs", to: "BRISC", title: "Acknowledge INIT DONE", detail: "BRISC waits until every enabled subordinate has completed initialization." },
-  { id: "B8", from: "MetalContext", to: "CQ cores", title: "Install command transport", detail: "Persistent prefetch and dispatch Programs are configured after base firmware bring-up." },
+  { id: "B1", from: "MetalContext", to: "JIT", title: "Create firmware build states", detail: "Build or reuse separate firmware targets for BRISC, NCRISC and the three TRISCs.", sources: [{ label: "metal_context.cpp:283–307", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/metal_context.cpp#L283-L307" }, { label: "build_env_manager.cpp:340–358", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/jit_build/build_env_manager.cpp#L340-L358" }] },
+  { id: "B2", from: "JIT", to: "MetalContext", title: "Return five ELF images", detail: "Firmware is linked first and its exported symbols support later operation-kernel linking.", sources: [{ label: "build.cpp:628–790", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/jit_build/build.cpp#L628-L790" }] },
+  { id: "B3", from: "Host", to: "Worker L1", title: "Initialize launch state", detail: "The host writes firmware tables, launch-ring fields and INIT/GO state.", sources: [{ label: "risc_firmware_initializer.cpp:1053–1123", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1053-L1123" }] },
+  { id: "B4", from: "Host", to: "Worker L1", title: "Load every firmware image", detail: "Each ELF span is multicast to the HAL address assigned to its processor.", sources: [{ label: "risc_firmware_initializer.cpp:1143–1199", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1143-L1199" }] },
+  { id: "B5", from: "Host", to: "BRISC", title: "Release the supervisor", detail: "On Wormhole and Blackhole, BRISC is the first worker RISC released by the host.", sources: [{ label: "risc_firmware_initializer.cpp:1495–1532", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1495-L1532" }] },
+  { id: "B6", from: "BRISC", to: "NCRISC + TRISCs", title: "Set reset PCs and initialize", detail: "BRISC releases the subordinate processors and requests their initialization.", sources: [{ label: "brisc.cc:181–275", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L181-L275" }] },
+  { id: "B7", from: "NCRISC + TRISCs", to: "BRISC", title: "Acknowledge INIT DONE", detail: "BRISC waits until every enabled subordinate has completed initialization.", sources: [{ label: "brisc.cc:354–387", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L354-L387" }] },
+  { id: "B8", from: "MetalContext", to: "CQ cores", title: "Install command transport", detail: "Persistent prefetch and dispatch Programs are configured after base firmware bring-up.", sources: [{ label: "dispatch_kernel_initializer.cpp:119–203", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/device/firmware/dispatch_kernel_initializer.cpp#L119-L203" }] },
 ] as const;
 
 const runSteps = [
-  { id: "R1", from: "Host / TTNN", to: "Program JIT", title: "Compile on cache miss", detail: "Build selected DM kernels and three TRISC variants from the compute source." },
-  { id: "R2", from: "Program", to: "Device binary buffer", title: "Pack and upload ELF spans", detail: "Page-aligned binary_data records destination address, offset, size and processor metadata." },
-  { id: "R3", from: "Host CQ", to: "Prefetch / dispatch", title: "Send the command stream", detail: "Runtime args and config precede optional binary placement, launch message and GO." },
-  { id: "R4", from: "Dispatcher", to: "Worker L1", title: "Place code and launch state", detail: "NoC writes populate required worker regions; a barrier orders them before GO." },
-  { id: "R5", from: "Dispatcher", to: "BRISC", title: "Issue GO", detail: "Resident BRISC firmware observes the launch, configures the run and starts subordinate work." },
-  { id: "R6", from: "BRISC", to: "NCRISC + TRISCs", title: "Start parallel kernel roles", detail: "DM0, optional DM1 and UNPACK/MATH/PACK call their operation-kernel entry points." },
-  { id: "R7", from: "NCRISC + TRISCs", to: "BRISC", title: "Collect operation DONE", detail: "This completion is different from the initialization acknowledgement at cold boot." },
-  { id: "R8", from: "BRISC", to: "Dispatcher / host", title: "Publish completion", detail: "The command queue can retire the launch and release a waiting event or Finish." },
+  { id: "R1", from: "Host / TTNN", to: "Program JIT", title: "Compile on cache miss", detail: "Build selected DM kernels and three TRISC variants from the compute source.", sources: [{ label: "kernel.cpp:900–955", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/kernels/kernel.cpp#L900-L955" }] },
+  { id: "R2", from: "Program", to: "Device binary buffer", title: "Pack and upload ELF spans", detail: "Page-aligned binary_data records destination address, offset, size and processor metadata.", sources: [{ label: "program.cpp:2134–2225", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/program.cpp#L2134-L2225" }, { label: "mesh_workload.cpp:124–195", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/distributed/mesh_workload.cpp#L124-L195" }] },
+  { id: "R3", from: "Host CQ", to: "Prefetch / dispatch", title: "Send the command stream", detail: "Runtime args and config precede optional binary placement, launch message and GO.", sources: [{ label: "dispatch.cpp:3169–3277", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L3169-L3277" }] },
+  { id: "R4", from: "Dispatcher", to: "Worker L1", title: "Place code and launch state", detail: "NoC writes populate required worker regions; a barrier orders them before GO.", sources: [{ label: "dispatch.cpp:1647–1921", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L1647-L1921" }, { label: "dispatch.cpp:2128–2336", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L2128-L2336" }] },
+  { id: "R5", from: "Dispatcher", to: "BRISC", title: "Issue GO", detail: "Resident BRISC firmware observes the launch, configures the run and starts subordinate work.", sources: [{ label: "dispatch.cpp:2355–2422", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L2355-L2422" }] },
+  { id: "R6", from: "BRISC", to: "NCRISC + TRISCs", title: "Start parallel kernel roles", detail: "DM0, optional DM1 and UNPACK/MATH/PACK call their operation-kernel entry points.", sources: [{ label: "brisc.cc:389–542", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L389-L542" }] },
+  { id: "R7", from: "NCRISC + TRISCs", to: "BRISC", title: "Collect operation DONE", detail: "This completion is different from the initialization acknowledgement at cold boot.", sources: [{ label: "ncrisc.cc:126–192", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/ncrisc.cc#L126-L192" }, { label: "trisc.cc:152–223", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/trisc.cc#L152-L223" }] },
+  { id: "R8", from: "BRISC", to: "Dispatcher / host", title: "Publish completion", detail: "The command queue can retire the launch and release a waiting event or Finish.", sources: [{ label: "brisc.cc:574–592", url: "https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L574-L592" }] },
 ] as const;
 
 const sourceCards = [
@@ -78,9 +86,9 @@ function Sequence({ steps, label }: { steps: typeof bootSteps | typeof runSteps;
     <div className="risc-sequence" role="region" aria-label={label}>
       {steps.map((step, index) => (
         <article key={step.id}>
-          <span className="sequence-id">{step.id}</span>
+          <a className="sequence-id" href={step.sources[0].url} aria-label={`Open source for ${step.id}`}>{step.id}</a>
           <div className="sequence-route"><b>{step.from}</b><i>→</i><b>{step.to}</b></div>
-          <div><h3>{step.title}</h3><p>{step.detail}</p></div>
+          <div><h3>{step.title}</h3><p>{step.detail}</p><div className="step-sources">{step.sources.map((source) => <a key={source.url} href={source.url}>{source.label} ↗</a>)}</div></div>
           <em>{String(index + 1).padStart(2, "0")}</em>
         </article>
       ))}
@@ -116,7 +124,7 @@ function FirmwareFlowApp() {
 
         <section id="objects" className="firmware-section object-section">
           <div className="firmware-heading"><span>00 / THE LIFETIME TEST</span><h2>Do not call every<br/>binary “firmware.”</h2><p>Four executable or data layers cross different boundaries. Give an observed byte the correct lifetime before interpreting its address or call stack.</p></div>
-          <div className="object-grid">{objectLayers.map((item) => <article key={item.number}><span>{item.number}</span><small>{item.lifetime}</small><h3>{item.title}</h3><p>{item.detail}</p></article>)}</div>
+          <div className="object-grid">{objectLayers.map((item) => <article key={item.number}><a className="object-id" href={item.url} aria-label={`Open source for ${item.title}`}>{item.number}</a><small>{item.lifetime}</small><h3>{item.title}</h3><p>{item.detail}</p><a className="object-source" href={item.url}>{item.source} ↗</a></article>)}</div>
           <div className="topology-strip"><span>TT-1XX WORKER</span><b>BRISC / DM0</b><i>+</i><b>NCRISC / DM1</b><i>+</i><b>TRISC0 / UNPACK</b><i>+</i><b>TRISC1 / MATH</b><i>+</i><b>TRISC2 / PACK</b></div>
         </section>
 
@@ -126,7 +134,7 @@ function FirmwareFlowApp() {
             <div className="phase-tabs" role="tablist" aria-label="Source analysis phases">
               {(Object.keys(phases) as PhaseKey[]).map((key) => <button type="button" role="tab" aria-selected={phase === key} className={phase === key ? "active" : ""} onClick={() => setPhase(key)} key={key}><span>{phases[key].number}</span>{phases[key].label}</button>)}
             </div>
-            <article className="phase-panel" role="tabpanel"><small>QUESTION TO PROVE</small><h3>{selected.question}</h3><dl><div><dt>Evidence</dt><dd>{selected.evidence}</dd></div><div><dt>Review gate</dt><dd>{selected.gate}</dd></div></dl></article>
+            <article className="phase-panel" role="tabpanel"><small>QUESTION TO PROVE</small><h3>{selected.question}</h3><a className="phase-source" href={selected.url}>OPEN CODE · {selected.source} ↗</a><dl><div><dt>Evidence</dt><dd>{selected.evidence}</dd></div><div><dt>Review gate</dt><dd>{selected.gate}</dd></div></dl></article>
           </div>
         </section>
 
