@@ -110,6 +110,25 @@ that visible.
   `rv64_custom_0` failure.
 - **Possible destination:** `TTSIM_DEBUGGING_PATH.md`
 
+### DBG-05 — Select and debug Blackhole synchronization
+
+- **Status:** `EVIDENCE`
+- **Detailed Q&A:** [Discussion subpage 03 — Blackhole synchronization
+  field guide](./DISCUSSION_BLACKHOLE_SYNCHRONIZATION.md)
+- **Question:** Which compiler fence, RISC-V fence, NoC barrier, L1
+  semaphore, CB credit or Tensix hardware wait enforces the dependency that
+  actually failed?
+- **Hypothesis:** Separating the compiler, local RISC, NoC, cross-core
+  readiness, buffer ownership and Tensix pipeline domains prevents false fixes
+  that only change timing.
+- **Evidence available:** The implementations and Watcher waypoints are pinned
+  to `tt-metal@50a82f835593512c4176546b4af68d7e91315a86`; the guide includes
+  checkpoint, delay-injection, profiler and ELF-disassembly flows.
+- **Next experiment:** Run the data-before-signal lab with a targeted NoC write
+  delay, then preserve a clean NoC profiler trace in a separate run.
+- **Possible destination:** `ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md` and
+  `TTSIM_DEBUGGING_PATH.md`
+
 ## Optimization queue
 
 ### OPT-01 — Measure cold versus warm Program launch traffic

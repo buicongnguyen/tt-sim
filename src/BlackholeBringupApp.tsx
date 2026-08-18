@@ -15,6 +15,8 @@ type DecisionStep = {
 
 const commit = "50a82f835593512c4176546b4af68d7e91315a86";
 const sourceRoot = `https://github.com/tenstorrent/tt-metal/blob/${commit}`;
+const umdCommit = "9bbe7bc93544029aadaa2b2bcbf39e774fa77f9a";
+const umdRoot = `https://github.com/tenstorrent/tt-umd/blob/${umdCommit}`;
 
 const sourceLinks = {
   briscLaunch: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L290-L330`,
@@ -23,6 +25,16 @@ const sourceLinks = {
   ncrisck: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc#L38-L95`,
   hal: `${sourceRoot}/tt_metal/llrt/hal/tt-1xx/blackhole/bh_hal_tensix.cpp#L97-L147`,
   compiler: `${sourceRoot}/tt_metal/jit_build/build.cpp#L124-L205`,
+  sfpiPin: `${sourceRoot}/tt_metal/sfpi-version`,
+  sfpiCmake: `${sourceRoot}/tt_metal/hw/CMakeLists.txt#L41-L173`,
+  memoryMap: `${sourceRoot}/tt_metal/hw/inc/internal/tt-1xx/blackhole/dev_mem_map.h#L31-L123`,
+  linkerMain: `${sourceRoot}/tt_metal/hw/toolchain/main.ld#L1-L121`,
+  linkerSegments: `${sourceRoot}/tt_metal/hw/toolchain/script_tng.ld#L220-L250`,
+  elfLoader: `${sourceRoot}/tt_metal/llrt/tt_elffile.cpp#L358-L555`,
+  memoryPacker: `${sourceRoot}/tt_metal/llrt/tt_memory.cpp#L40-L101`,
+  dispatchPack: `${sourceRoot}/tt_metal/impl/program/dispatch.cpp#L480-L533`,
+  programCapacity: `${sourceRoot}/tt_metal/impl/program/program.cpp#L2933-L2954`,
+  spanWrite: `${sourceRoot}/tt_metal/llrt/llrt.cpp#L169-L260`,
   buildMap: `${sourceRoot}/tt_metal/jit_build/build.cpp#L628-L790`,
   buildKey: `${sourceRoot}/tt_metal/jit_build/build.cpp#L369-L388`,
   config: `${sourceRoot}/tt_metal/api/tt-metalium/kernel_types.hpp#L53-L102`,
@@ -44,6 +56,19 @@ const sourceLinks = {
   callstackTest: `${sourceRoot}/tests/tt_metal/tt_metal/debug_tools/device_print/test_print_output.cpp#L640-L658`,
   firmwareLoad: `${sourceRoot}/tt_metal/impl/device/firmware/risc_firmware_initializer.cpp#L1143-L1165`,
   operationWrite: `${sourceRoot}/tt_metal/impl/kernels/kernel.cpp#L1079-L1092`,
+  dprintApi: `${sourceRoot}/tt_metal/hw/inc/api/debug/dprint.h#L9-L29`,
+  dprintWriter: `${sourceRoot}/tt_metal/hw/inc/api/debug/device_print.h#L168-L244`,
+  dprintServer: `${sourceRoot}/tt_metal/impl/debug/dprint_server.cpp#L565-L680`,
+  watcherMailbox: `${sourceRoot}/tt_metal/hw/inc/api/debug/waypoint.h#L8-L41`,
+  watcherReader: `${sourceRoot}/tt_metal/impl/debug/watcher_device_reader.cpp#L278-L340`,
+  tracyZones: `${sourceRoot}/tt_metal/tools/profiler/tracy_debug_zones.hpp#L12-L139`,
+  deviceProfiler: `${sourceRoot}/tt_metal/impl/profiler/profiler.cpp#L1227-L1420`,
+  l1Read: `${sourceRoot}/tt_metal/impl/host_api/tt_metal.cpp#L315-L351`,
+  binaryIntegrity: `${sourceRoot}/tools/triage/check_binary_integrity.py#L31-L107`,
+  gdbLimit: `${sourceRoot}/tools/triage/callstack_provider.py#L390-L435`,
+  hugepage: `${umdRoot}/device/hugepage.cpp#L29-L150`,
+  sysmemMap: `${umdRoot}/device/chip_helpers/silicon_sysmem_manager.cpp#L124-L330`,
+  simulatorSysmem: `${umdRoot}/device/chip_helpers/simulation_sysmem_manager.cpp#L45-L89`,
 } as const;
 
 const decisionSteps: readonly DecisionStep[] = [
@@ -304,7 +329,9 @@ function BlackholeBringupApp() {
         <a className="bringup-brand" href="./index.html"><b>TT•SIM</b><span>discussion / chain 01</span></a>
         <nav aria-label="Page navigation">
           <a href="#star">STAR case</a>
+          <a href="#toolchain">C1 toolchain</a>
           <a href="#model">Control flow</a>
+          <a href="#observer-tools">Observers</a>
           <a href="#decisions">Decision lab</a>
           <a href="#proof">Compiler proof</a>
           <a className="bringup-back" href="./discussion.html">← Discussion</a>
@@ -380,6 +407,114 @@ $DBG --gtest_filter='MeshWatcherFixture.TestWatcherWaypoints:DevicePrintOutputFi
           </div>
         </section>
 
+        <section id="toolchain" className="bringup-section toolchain-section">
+          <div className="bringup-section-heading">
+            <span>C1 / TOOLCHAIN + LOAD IMAGE</span>
+            <h2>“It compiled” is<br/>only gate one.</h2>
+            <p>Identify the exact SFPI executable, then prove that each ELF satisfies the Blackhole linker and memory-map contract. Finally compare TT-Metal&apos;s materialized address/word spans—not the ELF container—with an explicit device readback.</p>
+          </div>
+
+          <div className="toolchain-flow" aria-label="C1 compiler and ELF acceptance flow">
+            <a href={sourceLinks.sfpiPin}><span>01 / REQUIREMENT</span><b>SFPI 7.69.0<br/>build 822</b><small>read <code>tt_metal/sfpi-version</code></small></a>
+            <i aria-hidden="true">→</i>
+            <a href={sourceLinks.compiler}><span>02 / SELECTED TOOL</span><b>full JIT path<br/>+ SHA-256</b><small>do not infer it from <code>PATH</code></small></a>
+            <i aria-hidden="true">→</i>
+            <a href={sourceLinks.elfLoader}><span>03 / ELF CONTRACT</span><b>ELF32 · LE<br/>RISC-V · limits</b><small>entry, <code>PT_LOAD</code>, <code>.segments</code></small></a>
+            <i aria-hidden="true">→</i>
+            <a href={sourceLinks.memoryPacker}><span>04 / LOAD IDENTITY</span><b>address · length<br/>32-bit words</b><small>compare each materialized span</small></a>
+          </div>
+
+          <div className="toolchain-ledger">
+            <article className="toolchain-identity">
+              <header><span>OBSERVED IN THE INSPECTED WSL CHECKOUT</span><b>Compiler identity ledger</b></header>
+              <dl>
+                <div><dt>Required release</dt><dd><code>7.69.0[822]</code></dd></div>
+                <div><dt>Selected path</dt><dd><code>runtime/sfpi/compiler/bin/riscv-tt-elf-g++</code></dd></div>
+                <div><dt>Version output</dt><dd><code>tenstorrent/sfpi:7.69.0[822] · GCC 15.1.0</code></dd></div>
+                <div><dt>Executable SHA-256</dt><dd><code>063f7076…2fafea4</code></dd></div>
+              </dl>
+              <p>The package archive hash proves the pinned download. The executable hash proves which concrete compiler ran. Preserve both plus the complete JIT compile and link commands.</p>
+              <SourceLinks links={[
+                { label: "SFPI version/build pin", href: sourceLinks.sfpiPin },
+                { label: "CMake version gate", href: sourceLinks.sfpiCmake },
+                { label: "JIT compiler search order", href: sourceLinks.compiler },
+              ]} />
+            </article>
+            <pre className="toolchain-command"><code>{`cd ~/src/tt-metal
+
+grep -E '^sfpi_(version|build)=' tt_metal/sfpi-version
+realpath runtime/sfpi/compiler/bin/riscv-tt-elf-g++
+runtime/sfpi/compiler/bin/riscv-tt-elf-g++ --version | head -1
+sha256sum runtime/sfpi/compiler/bin/riscv-tt-elf-g++
+
+export TT_METAL_FORCE_JIT_COMPILE=1
+export TT_METAL_LOG_KERNELS_COMPILE_COMMANDS=1
+export TT_METAL_KERNEL_MAP=1
+export TT_METAL_RISCV_DEBUG_INFO=1
+
+./path/to/one_core_reproducer 2>&1 | \
+  tee /tmp/blackhole-jit-command.log`}</code></pre>
+          </div>
+
+          <div className="elf-contract">
+            <header>
+              <span>ELF / SIZE ACCEPTANCE</span>
+              <h3>Measure the loadable image,<br/>not the container.</h3>
+              <p><code>readelf -lW</code> exposes the load segments. The linker&apos;s non-loadable <code>.segments</code> triples supply VMA, trim bound and size limit. The loader rejects a segment whose materialized memory size crosses that embedded limit.</p>
+            </header>
+            <div className="firmware-footprints" role="table" aria-label="Observed Blackhole firmware text footprints">
+              <div className="firmware-row head" role="row"><b>RISC</b><b>ENTRY / VMA</b><b>TEXT</b><b>LIMIT</b><b>CHECK</b></div>
+              {[
+                ["BRISC", "0x3a60", "4,860 B", "8,704 B"],
+                ["NCRISC", "0x5c60", "1,256 B", "2,560 B"],
+                ["TRISC0", "0x6660", "1,172 B", "2,560 B"],
+                ["TRISC1", "0x7060", "580 B", "2,560 B"],
+                ["TRISC2", "0x7a60", "1,132 B", "2,560 B"],
+              ].map(([risc, vma, size, limit]) => (
+                <div className="firmware-row" role="row" key={risc}><b>{risc}</b><code>{vma}</code><code>{size}</code><code>{limit}</code><span>FITS</span></div>
+              ))}
+            </div>
+          </div>
+
+          <div className="hex-explainer">
+            <div>
+              <span>WHY A FLAT HEX FILE IS NOT THE PROOF</span>
+              <h3>ELF → validated segments → load spans → device</h3>
+              <p>Current TT-Metal replaces the old hex-file mechanism. It parses <code>PT_LOAD</code> segments, applies <code>.segments</code> trimming and limits, then packs address, length and 32-bit words. A whole-file <code>objcopy -O binary</code> loses that address-aware contract.</p>
+              <ol>
+                <li><b>Source ↔ instructions</b><span><code>objdump -drSC</code>, <code>nm</code>, <code>addr2line</code></span></li>
+                <li><b>ELF ↔ load spans</b><span>record each address, word count and post-processing hash</span></li>
+                <li><b>Load spans ↔ device</b><span>bounded safe readback before <code>GO</code>; compare the same words</span></li>
+              </ol>
+            </div>
+            <pre><code>{`TOOLS=runtime/sfpi/compiler/bin
+ELF=/path/to/ncrisc.elf
+
+$TOOLS/riscv-tt-elf-readelf -h "$ELF"
+$TOOLS/riscv-tt-elf-readelf -lW "$ELF"
+$TOOLS/riscv-tt-elf-objdump -s -j .segments "$ELF"
+$TOOLS/riscv-tt-elf-objdump -drSC "$ELF" > /tmp/ncrisc.dis
+
+$TOOLS/riscv-tt-elf-objcopy \
+  --dump-section .text=/tmp/ncrisc-text.bin "$ELF"
+xxd -e -g4 /tmp/ncrisc-text.bin | head -40
+sha256sum "$ELF" /tmp/ncrisc-text.bin`}</code></pre>
+          </div>
+
+          <p className="toolchain-caveat"><b>Two limits, two questions.</b> Fixed BRISC/NCRISC/TRISC firmware holes constrain common firmware. The much larger <code>MEM_MAX_KERNEL_SIZE</code> is not permission for every operation ELF to grow independently: Program finalization still rejects the aggregate packed image when it exceeds the kernel configuration buffer. The footprint values above are observations from one cache at commit <code>{commit.slice(0, 12)}</code>, not constants for another revision.</p>
+
+          <SourceLinks links={[
+            { label: "Blackhole memory map", href: sourceLinks.memoryMap },
+            { label: "Per-RISC linker selection", href: sourceLinks.linkerMain },
+            { label: ".segments metadata", href: sourceLinks.linkerSegments },
+            { label: "ELF parser + limits", href: sourceLinks.elfLoader },
+            { label: "ELF → word spans", href: sourceLinks.memoryPacker },
+            { label: "Packed size + offsets", href: sourceLinks.dispatchPack },
+            { label: "Aggregate capacity check", href: sourceLinks.programCapacity },
+            { label: "LLRT span writes", href: sourceLinks.spanWrite },
+          ]} />
+        </section>
+
         <section id="model" className="bringup-section bringup-model-section">
           <div className="bringup-section-heading">
             <span>00 / CORRECTED MODEL</span>
@@ -434,6 +569,76 @@ unset TT_METAL_DEVICE_PROFILER
             <div>{waypointDefinitions.map(([mark, meaning]) => <article key={mark}><code>{mark}</code><p>{meaning}</p></article>)}</div>
           </div>
           <p className="waypoint-rule"><b>Read the interval, not only the last letter.</b> <code>R</code> without <code>K</code> points to shared GO, operation handoff, image/entry, CRT or ABI. <code>K</code> without <code>KD</code> proves entry and setup completed, so investigate waits, circular buffers, NoC/memory access and generated instructions inside <code>kernel_main</code>.</p>
+        </section>
+
+        <section id="observer-tools" className="bringup-section observer-section">
+          <div className="bringup-section-heading">
+            <span>02 / OBSERVER STACK</span>
+            <h2>Choose the fact,<br/>then the tool.</h2>
+            <p>DPRINT, Watcher and Tracy are not interchangeable log levels. They move different information through different buffers, with different effects on the failure.</p>
+          </div>
+
+          <div className="observer-grid">
+            <article className="observer-card dprint-card">
+              <header><span>VALUES</span><b>DPRINT</b></header>
+              <h3>Typed message<br/>through an L1 ring.</h3>
+              <p>The RISC locks a shared buffer, serializes a compact header and arguments, then publishes <code>wpos</code>. The host drains the ring, resolves format metadata from the ELF and advances <code>rpos</code>.</p>
+              <dl><div><dt>USE</dt><dd>one address, field or branch value</dd></div><div><dt>COST</dt><dd>locking, traffic, possible producer stall</dd></div></dl>
+              <a href={sourceLinks.dprintServer}>Open host drain path ↗</a>
+            </article>
+            <article className="observer-card watcher-card">
+              <header><span>PROGRESS + SAFETY</span><b>WATCHER</b></header>
+              <h3>Latest waypoint<br/>plus guarded state.</h3>
+              <p>Each RISC overwrites a four-byte L1 mailbox. A host thread snapshots waypoints, launch IDs, asserts and NoC/CB sanitizer state. A waypoint is a breadcrumb—not a full trace history.</p>
+              <dl><div><dt>USE</dt><dd>first classification of a hang</dd></div><div><dt>COST</dt><dd>compiled checks and periodic host reads</dd></div></dl>
+              <a href={sourceLinks.watcherMailbox}>Open mailbox macro ↗</a>
+            </article>
+            <article className="observer-card tracy-card">
+              <header><span>TIME</span><b>TRACY + DEVICE PROFILER</b></header>
+              <h3>Timestamped scopes<br/>on a shared timeline.</h3>
+              <p>Host zones stream from the Tracy client. Device RAII zones record start/end markers in finite per-core L1, optionally stage through DRAM, and are parsed into Tracy or CSV.</p>
+              <dl><div><dt>USE</dt><dd>host waits, dispatch and device intervals</dd></div><div><dt>COST</dt><dd>marker SRAM and timestamp overhead</dd></div></dl>
+              <a href={sourceLinks.deviceProfiler}>Open device drain path ↗</a>
+            </article>
+          </div>
+
+          <div className="observer-rule">
+            <span>ONE REPRODUCER · THREE PASSES</span>
+            <div><b>A</b><p>Watcher alone<br/><small>find the boundary</small></p><i>→</i><b>B</b><p>DPRINT alone<br/><small>read chosen values</small></p><i>→</i><b>C</b><p>Profiler alone<br/><small>measure after correctness</small></p></div>
+            <strong>Remove instrumentation and reproduce once more.</strong>
+          </div>
+
+          <div className="memory-debug-layout">
+            <article className="memory-ladder">
+              <header><span>MEMORY INSPECTION LADDER</span><h3>Read bytes with the least invasive owner.</h3></header>
+              <ol>
+                <li><b>01</b><div><strong>Host readback</strong><p>Finish or checkpoint the producer, then read only the L1/DRAM allocation owned by the test.</p></div><a href={sourceLinks.l1Read}>L1 API ↗</a></li>
+                <li><b>02</b><div><strong>tt-triage</strong><p>After a hang, compare firmware and kernel <code>.text</code> bytes in L1 with the matching ELFs.</p></div><a href={sourceLinks.binaryIntegrity}>integrity check ↗</a></li>
+                <li><b>03</b><div><strong>TT-ExaLens / GDB</strong><p>Use bounded reads first. Halt, breakpoint and step only when the changed coordination is acceptable.</p></div><a href={sourceLinks.gdbLimit}>BH caveat ↗</a></li>
+                <li><b>04</b><div><strong>Physical JTAG / FPGA ILA</strong><p>Board-specific lab escalation. It needs schematics, TAP/RTL maps, halt semantics and an approved capture plan.</p></div><i>LAB</i></li>
+              </ol>
+            </article>
+
+            <article className="hugepage-map">
+              <header><span>HOST SYSTEM MEMORY</span><h3>Huge pages are not device L1 or DRAM.</h3></header>
+              <div className="hugepage-branch"><b>IOMMU?</b><div><span>YES</span><p>KMD/UMD registers system memory and returns a device IOVA/NoC address.</p></div><div><span>NO</span><p>UMD maps a 1 GiB <code>hugetlbfs</code> file, associates the channel and exposes host VA + device address.</p></div></div>
+              <p className="hugepage-result">Both paths feed Metalium's fast-dispatch command-queue regions. Standard ttsim uses simulated/DRAM-backed system memory, so physical PCIe hugepage provisioning is not its path.</p>
+              <pre><code>{`./scripts/iommu_detect.sh
+grep -i Huge /proc/meminfo
+findmnt -t hugetlbfs`}</code></pre>
+              <a href={sourceLinks.sysmemMap}>Open UMD mapping path ↗</a>
+            </article>
+          </div>
+
+          <p className="observer-boundary"><b>Accuracy boundary.</b> TT-ExaLens exposes UMD/on-chip RISC debug; that is not evidence of an external JTAG cable. No generic public TT-Metal TAP/OpenOCD flow was found in the pinned source. FPGA ILA and physical JTAG procedures therefore remain board/bitstream-specific lab work.</p>
+          <SourceLinks links={[
+            { label: "DPRINT writer", href: sourceLinks.dprintWriter },
+            { label: "Watcher snapshot", href: sourceLinks.watcherReader },
+            { label: "Host Tracy zones", href: sourceLinks.tracyZones },
+            { label: "ELF/device byte comparison", href: sourceLinks.binaryIntegrity },
+            { label: "UMD hugepage allocation", href: sourceLinks.hugepage },
+            { label: "Simulator sysmem", href: sourceLinks.simulatorSysmem },
+          ]} />
         </section>
 
         <section id="decisions" className="bringup-section decision-section">
@@ -575,6 +780,7 @@ $TOOLS/riscv-tt-elf-addr2line -e kernel.elf \
 
       <footer className="bringup-footer">
         <div><b>TT•SIM · DISCUSSION CHAIN 01</b><p>Blackhole BRISC/NCRISC bring-up with explicit root-cause gates.</p></div>
+        <a href="./discussion-blackhole-synchronization.html">Sync field guide →</a>
         <a href="./discussion-transformer-blackhole-optimization.html">Chain 02 →</a>
         <a href="./discussion.html">Discussion →</a>
         <a href="./firmware-flow.html">Firmware flow →</a>

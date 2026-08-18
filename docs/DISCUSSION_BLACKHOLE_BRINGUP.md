@@ -276,6 +276,217 @@ Host and device source locations for review:
   and
   [`test_print_output.cpp:640–658`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tests/tt_metal/tt_metal/debug_tools/device_print/test_print_output.cpp#L640-L658).
 
+#### C1 — Which toolchain built the ELF, and does the ELF match the design?
+
+First, use the correct name: the Blackhole data-movement processor is
+**NCRISC**, not “NRISC.” The C1 branch has two separate gates:
+
+1. **toolchain identity** — did the JIT use the required SFPI compiler, version,
+   executable and flags?
+2. **load-image contract** — are the ELF architecture, entry, load spans, region
+   sizes and actual 32-bit words consistent with the Blackhole memory map and
+   the bytes written to the device?
+
+```mermaid
+flowchart TD
+    C1[JIT / toolchain / build-state problem] --> P[Capture compiler path from the JIT compile log]
+    P --> R[Read required SFPI version and build from tt_metal/sfpi-version]
+    R --> V{Actual version and build match?}
+    V -- no --> I[Install the pinned SFPI package and create a fresh cache]
+    V -- yes --> H[Record compiler SHA-256 and complete compile/link commands]
+    H --> J{Logged JIT path equals the verified executable?}
+    J -- no --> Q[Fix local-versus-system SFPI selection or stale build state]
+    J -- yes --> F[Force JIT and build BRISC, NCRISC and TRISC ELFs]
+    F --> E[Continue to the ELF/load-image acceptance gate]
+```
+
+The runtime JIT checks for these compiler locations in this order:
+
+```text
+1. $TT_METAL_HOME/runtime/sfpi/compiler/bin/riscv-tt-elf-g++
+2. /opt/tenstorrent/sfpi/compiler/bin/riscv-tt-elf-g++
+```
+
+Do not infer the selected path from `PATH`. The JIT constructs the full path in
+[`JitBuildEnv::init`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/jit_build/build.cpp#L124-L205).
+The CMake configuration independently reads the required release, selects or
+downloads SFPI, calls the compiler with `--version`, and stops on a version
+mismatch in
+[`tt_metal/hw/CMakeLists.txt`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/CMakeLists.txt#L41-L173).
+
+For the inspected checkout, the requirement and observed compiler were:
+
+| Item | Inspected value |
+|---|---|
+| TT-Metal requirement | SFPI `7.69.0`, package build `822` |
+| selected compiler | `/home/n/src/tt-metal/runtime/sfpi/compiler/bin/riscv-tt-elf-g++` |
+| reported identity | `riscv-tt-elf-g++ (tenstorrent/sfpi:7.69.0[822]) 15.1.0` |
+| executable SHA-256 | `063f7076c71b36200631acee16790b38c52b27bbc1e0e8933efaae9992fafea4` |
+
+The version/build pin is stored in
+[`tt_metal/sfpi-version`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/sfpi-version).
+The downloadable archive also has a pinned SHA-256. That archive hash validates
+the package; the executable hash above identifies the concrete compiler used by
+this experiment. Record both when investigating a suspected compiler defect.
+
+Run these checks before compiling the reproducer:
+
+```bash
+cd ~/src/tt-metal
+
+grep -E '^sfpi_(version|build)=' tt_metal/sfpi-version
+grep -E '^TT_USE_SYSTEM_SFPI' build/CMakeCache.txt || true
+
+realpath runtime/sfpi/compiler/bin/riscv-tt-elf-g++
+runtime/sfpi/compiler/bin/riscv-tt-elf-g++ --version | head -1
+sha256sum runtime/sfpi/compiler/bin/riscv-tt-elf-g++
+
+export TT_METAL_FORCE_JIT_COMPILE=1
+export TT_METAL_LOG_KERNELS_COMPILE_COMMANDS=1
+export TT_METAL_KERNEL_MAP=1
+export TT_METAL_RISCV_DEBUG_INFO=1
+
+./path/to/one_core_reproducer 2>&1 | tee /tmp/blackhole-jit-command.log
+```
+
+The final authority is the `g++ compile cmd` and `g++ link cmd` in that log.
+They prove the exact executable, optimization level, defines, architecture
+flags, linker script and weakened firmware ELF. `TT_METAL_FORCE_JIT_COMPILE`
+prevents an old cache hit from hiding the compiler actually under test. Normal
+JIT build keys include the compiler version; build-map mode intentionally omits
+it, so compiler A/B experiments still require different cache directories.
+
+##### Check ELF structure, size and content
+
+The next graph is deliberately separate from toolchain selection:
+
+```mermaid
+flowchart TD
+    E[One BRISC / NCRISC / TRISC ELF] --> A{ELF32, little-endian, RISC-V?}
+    A -- no --> A1[Wrong target or corrupt artifact]
+    A -- yes --> B{Entry equals first PT_LOAD VMA and HAL firmware base?}
+    B -- no --> B1[Wrong linker script, architecture or processor selection]
+    B -- yes --> S[Decode .segments triples: VMA, trim bound, size limit]
+    S --> O{Every PT_LOAD memory size is within its embedded limit?}
+    O -- no --> O1[Loader rejects code, TLS or static-data overflow]
+    O -- yes --> P[Materialize TT-Metal 32-bit load spans]
+    P --> G{Aggregate operation image fits kernel config buffer?}
+    G -- no --> G1[Program finalization rejects the packed program]
+    G -- yes --> X[Dump span words, disassemble, hash each span]
+    X --> D{Supported explicit device readback matches address, length and words?}
+    D -- no --> D1[Load address, transport, cache or stale-image problem]
+    D -- yes --> K[Image identity proven; interpret R / K / KD]
+```
+
+The memory map is a shared host/device/linker source of truth. Blackhole defines
+the local memories, fixed firmware holes and kernel limits in
+[`dev_mem_map.h`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/internal/tt-1xx/blackhole/dev_mem_map.h#L31-L87),
+and derives the five firmware bases in
+[`dev_mem_map.h:119–123`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/internal/tt-1xx/blackhole/dev_mem_map.h#L119-L123).
+The linker selects `TEXT_START`, `TEXT_SIZE`, local-data size and minimum stack
+for exactly one RISC in
+[`main.ld`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/toolchain/main.ld#L1-L121).
+It then writes triples of `segment VMA : trim bound : size limit` into the
+non-loadable `.segments` metadata section in
+[`script_tng.ld`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/toolchain/script_tng.ld#L220-L250).
+
+Inspect every ELF with the matching SFPI binutils:
+
+```bash
+cd ~/src/tt-metal
+TT_CASE_TOOLS=runtime/sfpi/compiler/bin
+TT_CASE_ELF=/path/to/brisc.elf
+
+"$TT_CASE_TOOLS/riscv-tt-elf-readelf" -h "$TT_CASE_ELF"
+"$TT_CASE_TOOLS/riscv-tt-elf-readelf" -lW "$TT_CASE_ELF"
+"$TT_CASE_TOOLS/riscv-tt-elf-readelf" -SW "$TT_CASE_ELF"
+"$TT_CASE_TOOLS/riscv-tt-elf-objdump" -s -j .segments "$TT_CASE_ELF"
+"$TT_CASE_TOOLS/riscv-tt-elf-nm" -nC "$TT_CASE_ELF" | head -80
+"$TT_CASE_TOOLS/riscv-tt-elf-objdump" -drSC "$TT_CASE_ELF" > /tmp/risc.dis
+sha256sum "$TT_CASE_ELF"
+```
+
+Acceptance checks:
+
+- ELF header is `ELF32`, little-endian, machine `RISC-V`;
+- entry address equals the first executable `PT_LOAD` virtual address;
+- that address equals the RISC firmware base supplied by
+  [`bh_hal_tensix.cpp`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/hal/tt-1xx/blackhole/bh_hal_tensix.cpp#L97-L145);
+- executable `p_memsz` is within the `.segments` text limit;
+- local-data/TLS `p_memsz` is within its `.segments` limit, which reserves the
+  required stack space;
+- symbols and disassembly map the suspected PC to the expected source interval;
+- the complete ELF hash is used only for artifact provenance—not as the device
+  payload hash.
+
+The inspected Blackhole cache produced this example. These values are a local
+observation, not constants to copy into another revision:
+
+| Firmware | Entry / text VMA | Text bytes | Embedded text limit | Result |
+|---|---:|---:|---:|---|
+| BRISC | `0x3a60` | `0x12fc` = 4,860 B | `0x2200` = 8,704 B | fits |
+| NCRISC | `0x5c60` | `0x04e8` = 1,256 B | `0x0a00` = 2,560 B | fits |
+| TRISC0 | `0x6660` | `0x0494` = 1,172 B | `0x0a00` = 2,560 B | fits |
+| TRISC1 | `0x7060` | `0x0244` = 580 B | `0x0a00` = 2,560 B | fits |
+| TRISC2 | `0x7a60` | `0x046c` = 1,132 B | `0x0a00` = 2,560 B | fits |
+
+Do not compare the on-disk ELF file size with a firmware hole. ELF headers,
+section tables, symbols and debug information are not all loaded. Compare the
+`PT_LOAD` memory sizes and TT-Metal's packed spans.
+
+##### What “ELF converted to hex” means in current TT-Metal
+
+`tt_elffile.hpp` explicitly describes the loader as a replacement for the old
+hex-file mechanism. Current TT-Metal does this:
+
+```text
+ELF PT_LOAD segments
+  → validate entry/alignment/architecture
+  → apply .segments trim and overflow limits
+  → ll_api::memory packs address + length + uint32_t words
+  → CONTIGUOUS_XIP relocates the operation view when required
+  → dispatch records packed size and aligned per-RISC offset
+  → LLRT writes each span to the selected core/address
+```
+
+The code path is:
+
+- [ELF validation and `.segments` overflow enforcement](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/tt_elffile.cpp#L358-L415)
+  and [ELF/PT_LOAD parsing](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/tt_elffile.cpp#L421-L555);
+- [`ll_api::memory` packs segments into address/word spans](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/tt_memory.cpp#L40-L101);
+- [dispatch stores each packed size and aligned offset](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L480-L533);
+- [Program finalization rejects the aggregate image if it exceeds the kernel
+  configuration buffer](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/program.cpp#L2933-L2954);
+- [LLRT iterates and writes the materialized spans](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/llrt.cpp#L169-L260).
+
+For a human-readable view of the instruction words, dump only the section under
+inspection and display little-endian 32-bit words:
+
+```bash
+"$TT_CASE_TOOLS/riscv-tt-elf-objcopy" \
+  --dump-section .text=/tmp/risc-text.bin "$TT_CASE_ELF"
+xxd -e -g4 /tmp/risc-text.bin | head -40
+sha256sum /tmp/risc-text.bin
+```
+
+This is useful for compiler A/B comparison, but it is still only the `.text`
+section. Do **not** use whole-file `objcopy -O binary` as proof of what TT-Metal
+sends: separated virtual addresses, non-loadable metadata, trimmed regions and
+multiple spans make a flat binary an unreliable model.
+
+To prove content matches the design, preserve three comparisons:
+
+1. **source ↔ instructions:** use `objdump -drSC`, `nm` and `addr2line` to map
+   the suspected instructions and PC to the expected function/source;
+2. **ELF ↔ materialized span:** record each TT-Metal span address, word count and
+   SHA-256 after `.segments` processing;
+3. **materialized span ↔ device:** perform a supported, explicit bounded
+   readback before `GO` and compare the same address, length and words.
+
+For Blackhole multicast firmware writes, the standard readback flag is not a
+general solution. Use a controlled unicast/isolation path or an explicit safe
+readback implementation, as explained in Q5 below.
+
 #### The missing NCRISC-only rung
 
 Do not relabel the L2 compile test as an NCRISC execution test. Add or adapt a
@@ -599,6 +810,440 @@ References beside the graph:
 
 - [Official Device Debug Print guide](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html)
 - [JIT DPRINT and Watcher compile defines](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/jit_build/build.cpp#L224-L265)
+
+## Q4A — What do DPRINT, Watcher and Tracy actually observe?
+
+They answer different questions and operate at different layers. Selecting the
+tool by its familiar name is a common mistake; select it by the missing fact.
+
+| Missing fact | First tool | Mechanism | Main perturbation |
+|---|---|---|---|
+| Where did a RISC stop progressing? | Watcher | device code overwrites fixed per-RISC L1 mailboxes; a host thread periodically snapshots and decodes them | polling traffic and compiled-in checks |
+| What value, address or branch decision did the kernel see? | DPRINT | kernel serializes a typed message into a shared L1 ring; the host drains it and resolves format metadata from the ELF | locking, formatting traffic and possible producer stall |
+| Where is host time spent? | Tracy host zones | in-process Tracy client records timestamped C++/Python zones; capture/viewer consumes the event stream | timestamp/event overhead |
+| How long did a device interval take? | Device Program Profiler | RISC code writes timestamped zone markers to reserved L1, optionally drained through DRAM, then host code correlates them with Tracy/CSV | scarce profiler SRAM and marker overhead |
+| What bytes or state remain after a hang? | host readback, `tt-triage`, then TT-ExaLens | host/UMD reads a bounded L1/DRAM range; triage can compare it against ELF sections | snapshot may be inconsistent; halting a RISC changes execution |
+| Is first-silicon board logic or a physical debug path wrong? | lab JTAG/FPGA facilities | board-specific TAP/debug module or FPGA ILA captures signals/state | highly invasive and platform-specific |
+
+```mermaid
+flowchart TD
+    Q{What fact is missing?}
+    Q -->|Last completed state?| W[Watcher waypoints and safety state]
+    Q -->|A value or address?| D[DPRINT or bounded memory readback]
+    Q -->|Host or device time?| T[Tracy plus Device Profiler]
+    Q -->|State after a hang?| X[tt-triage or TT-ExaLens]
+    Q -->|Physical bring-up signal?| J[Board-lab JTAG or FPGA capture]
+
+    W --> R[Reproduce without instrumentation]
+    D --> R
+    T --> R
+    X --> R
+    J --> R
+```
+
+The last step matters. Every observer can move a race, consume L1, introduce a
+host read or halt a core. A conclusion is stronger when the same failure is
+reproduced once more after the temporary observer is removed.
+
+### DPRINT mechanism: an ELF-described, host-drained L1 message ring
+
+`DPRINT` is the public alias of `DEVICE_PRINT`. It is not a UART and the RISC
+does not format a normal C++ stream by itself. In a source build with
+`DEBUG_PRINT_ENABLED`, the compiler validates the format, places the format,
+file and line metadata in a device-print ELF section, and emits kernel code that
+serializes typed arguments.
+
+The writer constructs a compact header containing the RISC ID, kernel/firmware
+flag, payload length and string-information ID. It then acquires the shared
+print-buffer lock, checks the `wpos`/`rpos` ring pointers, writes an aligned
+payload, advances `wpos` and releases the lock. The host DPRINT server reads the
+ring from L1 (or through its dispatch aggregation path), resolves the metadata
+ID against the loaded ELF and writes the formatted line to stdout or a file.
+
+```mermaid
+sequenceDiagram
+    participant C as C++ compiler/linker
+    participant R as BRISC/NCRISC/TRISC
+    participant L as shared DPRINT L1 ring
+    participant H as host DPRINT server
+    participant O as terminal/file
+
+    C->>C: store format, file and line in ELF metadata
+    R->>L: acquire shared lock
+    R->>L: wait for free space using wpos/rpos
+    R->>L: write header plus typed aligned payload
+    R->>L: publish new wpos and release lock
+    H->>L: read pending span, including wraparound
+    H->>H: resolve string-info ID from ELF
+    H->>O: format and emit complete line
+    H->>L: advance rpos and clear producer stall
+```
+
+The host server writes a start magic before normal traffic. If no compatible
+server drains the buffer, the producer can run out of room and stall. That is
+why enabling DPRINT changes timing more than a four-byte Watcher waypoint, and
+why a print in a polling loop can hide or create the symptom. End every logical
+line with `\n`: the host keeps per-RISC partial-line state, so an unterminated
+tail may never appear.
+
+Use DPRINT when Watcher has already reduced the problem to a short interval and
+you need a few concrete values—for example `kernel_lma`, a launch field, a CB
+pointer, a semaphore value or a computed address. Select one core and only the
+needed RISCs. Do not use DPRINT for cycle-accurate profiling, for dumping a large
+tensor, or as the first observer of an unknown hang.
+
+Code beside the mechanism:
+
+- [DPRINT API contract and host-server requirement](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/debug/dprint.h#L9-L29)
+- [Message metadata and typed serialization](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/debug/device_print.h#L168-L244)
+- [Shared lock, ring-space wait and wrap protocol](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/debug/device_print.h#L1415-L1816)
+- [Host ring read, parse and `rpos` update](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/debug/dprint_server.cpp#L565-L680)
+- [Official Device Print guide](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_print.html)
+
+### Watcher mechanism: four-byte progress mailboxes plus safety state
+
+A waypoint such as `W`, `R`, `K` or `KD` is folded into a 32-bit value and
+written into the current hardware thread's dedicated L1 mailbox. It overwrites
+the previous value; it is a latest-state breadcrumb, not an ordered trace log.
+That fixed-size property makes it useful when DPRINT traffic would be excessive.
+
+Watcher is larger than the waypoint macro. With `WATCHER_ENABLED`, firmware and
+kernels also maintain launch/kernel IDs, assert and pause state, NoC-sanitizer
+information, debug-ring state, stack-use information and other guarded fields.
+The host Watcher thread periodically reads the per-core mailbox/launch region,
+decodes it, appends `generated/watcher/watcher.log`, and raises an error when a
+sanitizer or consistency check fails.
+
+```mermaid
+sequenceDiagram
+    participant R as each device RISC
+    participant M as per-core Watcher L1 state
+    participant H as host Watcher thread
+    participant G as watcher.log / exception
+
+    R->>M: overwrite this RISC's 4-byte waypoint
+    R->>M: update launch, assert or sanitizer state
+    loop every TT_METAL_WATCHER interval
+        H->>M: read mailbox and launch region
+        H->>H: decode RISC state, IDs and waypoints
+        H->>H: validate NoC, CB, stack and L1 invariants
+        H->>G: append snapshot or report violation
+    end
+```
+
+Use Watcher first for hangs, invalid NoC accesses, circular-buffer bounds,
+device asserts, firmware launch-state corruption and "which RISC got how far?"
+questions. Increase the polling interval when a frequent poll perturbs the
+reproducer. Avoid `TT_METAL_WATCHER_DUMP_ALL=1` initially: reading every exposed
+state while a kernel is live can itself hang or distort the run. Because a
+mailbox retains only its last marker, use paired markers around meaningful
+boundaries and use DPRINT or a profiler if you need event history.
+
+Code beside the mechanism:
+
+- [Four-byte per-RISC waypoint mailbox](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/debug/waypoint.h#L8-L41)
+- [Watcher host thread and polling loop](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/debug/watcher_server.cpp#L547-L616)
+- [Core snapshot fields and checks](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/debug/watcher_device_reader.cpp#L278-L340)
+- [NoC and mailbox validation failures](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/debug/watcher_device_reader.cpp#L715-L819)
+- [Official Watcher guide](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/watcher.html)
+
+### Tracy mechanism: host zones and device markers meet on one analysis timeline
+
+Tracy host instrumentation records scoped begin/end timestamps, thread identity,
+names and optional messages or plots in the process. `tracy-capture` or the GUI
+connects to that Tracy client, collects the stream and saves a `.tracy` trace.
+Normal host zones are enabled in the standard build; extra debug categories must
+be selected at build time.
+
+Device profiling is a related but separate producer. `DeviceZoneScopedN`
+creates an RAII scope in RISC code; construction records the start marker and
+destruction records the end marker. Markers occupy a finite reserved L1 buffer.
+The host Device Profiler reads per-core L1 directly in slow dispatch or drains
+the configured L1/DRAM path in fast dispatch, parses the records and emits
+Tracy/CSV data.
+
+```mermaid
+flowchart LR
+    subgraph Host[Host process]
+        HZ[C++ or Python Tracy zones] --> TC[Tracy client event stream]
+        DP[DeviceProfiler parser] --> TC
+    end
+
+    subgraph Device[Blackhole device]
+        DZ[DeviceZoneScopedN] --> PB[finite per-core L1 marker buffer]
+        PB -->|fast dispatch| DR[profiler DRAM staging]
+    end
+
+    PB -->|slow dispatch read| DP
+    DR -->|host drain| DP
+    TC --> CAP[tracy-capture]
+    CAP --> VIEW[GUI or WASM viewer]
+    DP --> CSV[CSV reports]
+```
+
+Use host Tracy to measure JIT compilation, program construction, command
+submission, queue waits and host synchronization. Use Device Program Profiler
+after correctness is stable to measure named device intervals. Do not infer
+silicon performance from ttsim timing: simulation is valuable for event order
+and control flow, but its wall time is not Blackhole hardware time. Profiler L1
+is finite, so instrument a few coarse zones before subdividing the hot one.
+
+Do not combine DPRINT, Watcher and Device Profiler in one decisive run. Their
+reserved SRAM and instrumentation can conflict, and even when a combination
+builds, it makes causality harder to review. Run three named passes with the same
+input and one observer at a time:
+
+```bash
+# Pass A: progress and safety
+TT_METAL_WATCHER=5 ./path/to/reproducer
+
+# Pass B: selected values; Watcher/profiler unset
+TT_METAL_DPRINT_CORES=0,0 TT_METAL_DPRINT_RISCVS=BR+NC \
+  ./path/to/reproducer
+
+# Pass C: timing after correctness; Watcher/DPRINT unset
+python3 -m tracy ./path/to/reproducer
+```
+
+The pinned launcher includes device collection by default and sets
+`TT_METAL_DEVICE_PROFILER=1` in the child process. Use `--no-device` only when
+the question is deliberately host-only; this revision does not define a `-d`
+option.
+
+Code beside the mechanism:
+
+- [Tracy build and debug-category options](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/cmake/project_options.cmake#L5-L12)
+- [Host Tracy zone/category macros](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/tools/profiler/tracy_debug_zones.hpp#L12-L139)
+- [`DeviceZoneScopedN` and RAII start/end markers](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/tools/profiler/kernel_profiler.hpp#L713-L746)
+- [Device profiler L1/DRAM read and parse path](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/profiler/profiler.cpp#L1227-L1420)
+- [Pinned Tracy launcher options and default device collection](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tools/tracy/__main__.py#L18-L31)
+- [Official Tracy guide](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/tracy_profiler.html)
+- [Official Device Program Profiler guide](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/device_program_profiler.html)
+
+## Q4B — How should I inspect Blackhole L1 or DRAM contents?
+
+Use the least invasive level that answers the question. "Use JTAG" is not one
+step: it hides coordinate translation, address ownership, synchronization,
+cache/NoC visibility and the risk of stopping a RISC while another RISC changes
+the same location.
+
+```mermaid
+flowchart TD
+    A{Can the reproducer reach a safe checkpoint?}
+    A -- yes --> H[Finish the queue or use a deliberate device checkpoint]
+    H --> R[Read the owned L1 or DRAM buffer through the host API]
+    R --> V[Save bytes, address, core, size and SHA-256]
+
+    A -- no, process hung --> T[Preserve generated ELFs and logs]
+    T --> I[Run tt-triage binary-integrity and state checks]
+    I --> E{Need registers, PC or stepping?}
+    E -- no --> V
+    E -- yes --> G[TT-ExaLens RISC debug or GDB server]
+    G --> P{Public debugger cannot expose required physical state?}
+    P -- no --> V
+    P -- yes --> J[Escalate to board-specific JTAG or FPGA lab plan]
+```
+
+### Level 1 — synchronized host readback
+
+For a buffer owned by the test, finish the producing command queue or reach an
+explicit producer/consumer checkpoint, then call the host read API. The pinned
+implementation performs an L1 barrier, translates the logical coordinate to a
+virtual device coordinate and calls the cluster read path.
+
+```cpp
+#include <cstdint>
+#include <fstream>
+#include <vector>
+
+// device, logical_core, l1_addr and byte_count come from this test's allocation.
+std::vector<std::uint32_t> words;
+tt::tt_metal::detail::ReadFromDeviceL1(
+    device, logical_core, l1_addr, byte_count, words);
+
+std::ofstream dump("l1-core-0-0.bin", std::ios::binary);
+dump.write(reinterpret_cast<const char*>(words.data()), byte_count);
+```
+
+This `detail` API is appropriate for a controlled debug test, not an API promise
+for production code. Read only a range whose owner and size are known. Do not
+guess an address inside firmware, launch mailboxes, CB configuration or debug
+buffers. A barrier makes prior host/device transactions visible; it does not
+atomically freeze several RISCs, so a live producer can still make a torn
+snapshot. Save the logical and translated core, address, byte count, command
+queue checkpoint and expected data pattern beside the dump.
+
+Code beside the method:
+
+- [`ReadFromDeviceL1` contract](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/api/tt-metalium/tt_metal.hpp#L343-L386)
+- [L1 barrier, core translation and cluster read](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/host_api/tt_metal.cpp#L315-L351)
+- [UMD-backed core read and Watcher host-read sanitizer](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/tt_cluster.cpp#L855-L907)
+
+### Level 2 — `tt-triage` and TT-ExaLens after a hang
+
+The pinned repository already contains a stronger binary-content check. The
+`check_binary_integrity` triage script finds the firmware and operation ELFs,
+parses their `.text` sections, reads the corresponding device L1 addresses via
+TT-ExaLens and compares the bytes. Run it before another workload overwrites the
+device state, while the matching generated artifacts still exist:
+
+```bash
+cd ~/src/tt-metal
+
+# Confirm the debugger packages used by this checkout.
+python -m pip show tt-exalens tt-umd
+
+# Compare firmware and operation .text bytes with the corresponding ELFs.
+./tools/tt-triage.py --run=check_binary_integrity
+
+# Add state/call-stack context when it is supported for this checkout/device.
+./tools/tt-triage.py --run=dump_callstacks -v
+```
+
+TT-ExaLens (also documented as TT-Lensium) can read on-chip memory and expose a
+GDB server. Its `brxy` command is useful for a small read-only L1/DRAM check after
+the exact device, coordinate system and address have been confirmed. For
+example, the official tutorial uses the following command shape:
+
+```bash
+tt-exalens --commands "brxy 0,0 0xADDRESS WORD_COUNT; x" > l1-read.txt
+```
+
+Do not copy an address from a different architecture or revision. Do not attach
+two owners that both believe they control the device. A GDB halt, breakpoint or
+single step is an invasive experiment: BRISC/NCRISC coordination, NoC progress
+and timeout behavior can change while one RISC is stopped. In the pinned
+TT-Metal revision, the triage call-stack provider explicitly disables its full
+GDB call-stack route on Blackhole because of a recorded TT-ExaLens limitation;
+that is a version-specific warning, not proof that all Blackhole memory reads
+are unsupported.
+
+Code and documentation beside the method:
+
+- [Pinned ELF-to-device `.text` byte comparison](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tools/triage/check_binary_integrity.py#L31-L107)
+- [Pinned Blackhole GDB call-stack limitation](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tools/triage/callstack_provider.py#L390-L435)
+- [TT-ExaLens repository](https://github.com/tenstorrent/tt-exalens)
+- [TT-ExaLens application tutorial](https://github.com/tenstorrent/tt-exalens/blob/main/docs/ttexalens-app-tutorial.md)
+
+### Level 3 — physical JTAG or FPGA capture is a lab interface, not a TT-Metal flag
+
+| Term | Meaning in this guide |
+|---|---|
+| JTAG / TAP | IEEE 1149.x serial test/debug access and its Test Access Port state machine; the available instructions and debug blocks are chip/board-specific |
+| RISC debug module | on-chip control for halt, resume, registers, PC and memory access; a software debugger may reach it without an external JTAG probe |
+| FPGA ILA | an Integrated Logic Analyzer synthesized into an FPGA bitstream to sample chosen RTL signals around a trigger |
+
+No generic external-JTAG workflow, TAP map or OpenOCD configuration was found in
+the reviewed pinned TT-Metal source, its `tools/triage` directory or the public
+TT-ExaLens material. TT-ExaLens uses UMD and on-chip RISC-debug facilities; its
+GDB server should not be described as proof that an external JTAG cable is in
+the path.
+
+For first-silicon or board bring-up, a company lab may have a physical JTAG path
+or an FPGA prototype with an integrated logic analyzer. That workflow needs the
+specific board schematic, scan/debug authorization, reset/power sequence,
+device-revision register map, halt semantics and approved probe/server. On an
+FPGA prototype, capture points and the PCIe/NoC memory-dump bridge must be built
+into that bitstream; an FPGA cannot be added later as a transparent memory probe
+for a production Blackhole card.
+
+Before such an escalation, write a lab capture contract:
+
+1. Freeze the exact board revision, bitstream/RTL or ASIC stepping and clock/reset state.
+2. Name the physical RISC/core and translate the target into the lab address map.
+3. Decide whether to halt all writers, trigger on a waypoint, or accept a live and possibly torn snapshot.
+4. Capture address, size, endianness, timestamp/trigger and tool versions with the bytes.
+5. Compare the same address span with the linker/ELF span, not merely a whole-file hash.
+6. Resume/reset with an explicit recovery procedure and rerun without the probe.
+
+For ttsim, prefer simulator memory APIs and deterministic checkpoints. JTAG and
+FPGA ILA do not improve simulated timing fidelity.
+
+## Q4C — What are huge pages, when are they needed, and what is mapped?
+
+| Term | Definition |
+|---|---|
+| KMD | kernel-mode driver; owns privileged device and DMA/IOMMU setup |
+| UMD | user-mode driver; maps device/shared memory into the Metalium process through the KMD |
+| IOMMU | hardware that translates device DMA addresses and enforces mappings, analogous to an MMU for I/O |
+| IOVA | I/O virtual address presented to the device after IOMMU/KMD mapping |
+| `hugetlbfs` | Linux filesystem whose files are backed by explicitly reserved huge pages |
+| NUMA | non-uniform memory access; CPU sockets/nodes have different latency to a PCIe device and its host memory |
+
+Huge pages are **host system memory**, not Tensix L1 and not device DRAM. In the
+non-IOMMU physical-silicon path, UMD opens files from a 1 GiB `hugetlbfs` mount,
+maps them into the host process, pins/associates them with a device/channel and
+obtains the device-visible NoC/I/O address. Metalium's system-memory manager then
+partitions that shared region for fast-dispatch issue/completion queues and
+writes commands through the returned host virtual address.
+
+With an enabled IOMMU/KMD path, UMD can register/map system memory and use an
+IOVA instead; the current UMD guidance says a separate hugepage setup is not
+required for Wormhole/Blackhole in that mode.
+
+```mermaid
+flowchart TD
+    A[Physical TT PCIe device] --> I{KMD reports IOMMU path?}
+    I -- yes --> M[KMD/UMD register system memory]
+    M --> V[host VA plus device IOVA/NoC address]
+
+    I -- no --> H[allocate 1 GiB hugetlbfs page per required channel]
+    H --> P[mmap MAP_SHARED plus MAP_POPULATE]
+    P --> N[NUMA bind and map page to device/NoC address]
+    N --> V
+
+    V --> C[Metalium partitions issue, completion and auxiliary CQ regions]
+    C --> D[host writes commands; device DMA/dispatch reads them]
+```
+
+Use hugepage provisioning when all of these are true:
+
+- the target is physical silicon using the PCIe/KMD/UMD path;
+- the IOMMU mapping path is not enabled or available;
+- fast-dispatch/shared host system memory needs pinned device-visible channels;
+- the system has sufficient 1 GiB pages and NUMA placement for the attached devices.
+
+Do not provision them merely for DPRINT, Watcher, device L1 buffers or DRAM
+buffers. Standard ttsim/Quasar simulation does not use the physical PCIe
+hugetlbfs path: the pinned Metalium environment forces DRAM-backed command queues
+for Quasar simulation, while simulated UMD system memory uses anonymous `mmap`
+and `MADV_HUGEPAGE`. Configuring WSL huge pages does not make a physical TT PCIe
+device visible inside WSL.
+
+Diagnose the platform before changing it:
+
+```bash
+cd ~/src/tt-metal/tt_metal/third_party/umd
+
+# UMD's detector decides which branch applies.
+./scripts/iommu_detect.sh
+
+# Read-only host state checks.
+grep -i Huge /proc/meminfo
+cat /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages
+cat /sys/kernel/mm/hugepages/hugepages-1048576kB/free_hugepages
+findmnt -t hugetlbfs
+systemctl status tenstorrent-hugepages.service --no-pager
+```
+
+If IOMMU is disabled and pages are missing, use the current Tenstorrent system
+tools/installer for that host rather than copying a stale page count from another
+machine. Required channels depend on the device/topology. Reserve pages at boot
+when possible, because obtaining physically contiguous 1 GiB pages after memory
+fragmentation can fail. NUMA placement mostly affects throughput/latency, but a
+wrong page count or missing mapping prevents the command-queue path from being
+created at all.
+
+Code beside the mapping:
+
+- [Pinned UMD IOMMU/hugepage setup guidance](https://github.com/tenstorrent/tt-umd/blob/9bbe7bc93544029aadaa2b2bcbf39e774fa77f9a/README.md#L23-L40)
+- [1 GiB hugetlbfs allocation and channel accounting](https://github.com/tenstorrent/tt-umd/blob/9bbe7bc93544029aadaa2b2bcbf39e774fa77f9a/device/hugepage.cpp#L29-L150)
+- [IOMMU versus hugepage mapping and device I/O address](https://github.com/tenstorrent/tt-umd/blob/9bbe7bc93544029aadaa2b2bcbf39e774fa77f9a/device/chip_helpers/silicon_sysmem_manager.cpp#L124-L330)
+- [Metalium command-queue partition over mapped host memory](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/dispatch/system_memory_manager.cpp#L193-L230)
+- [Quasar simulation forces DRAM-backed command queues](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/metal_env.cpp#L192-L199)
+- [Simulated anonymous system-memory mapping](https://github.com/tenstorrent/tt-umd/blob/9bbe7bc93544029aadaa2b2bcbf39e774fa77f9a/device/chip_helpers/simulation_sysmem_manager.cpp#L45-L89)
+- [Current TT-UMD repository guidance](https://github.com/tenstorrent/tt-umd)
+- [Tenstorrent installer/system tools](https://github.com/tenstorrent/tt-installer)
 
 ## Q5 — How do I prove the correct NCRISC binary was sent and entered?
 

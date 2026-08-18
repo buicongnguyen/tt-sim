@@ -16,6 +16,7 @@ export default defineConfig({
         firmwareFlow: fileURLToPath(new URL("./firmware-flow.html", import.meta.url)),
         discussion: fileURLToPath(new URL("./discussion.html", import.meta.url)),
         blackholeBringup: fileURLToPath(new URL("./discussion-blackhole-bringup.html", import.meta.url)),
+        blackholeSynchronization: fileURLToPath(new URL("./discussion-blackhole-synchronization.html", import.meta.url)),
         transformerOptimization: fileURLToPath(new URL("./discussion-transformer-blackhole-optimization.html", import.meta.url)),
       },
     },

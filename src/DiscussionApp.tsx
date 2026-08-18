@@ -65,6 +65,18 @@ const topics: readonly DiscussionTopic[] = [
     destination: "TTSim debugging path",
   },
   {
+    id: "DBG-05",
+    track: "debugging",
+    status: "evidence",
+    title: "Select and debug Blackhole synchronization",
+    question: "Which fence, semaphore, barrier or hardware wait enforces the dependency that actually failed?",
+    hypothesis: "Separating compiler, local RISC, NoC, cross-core readiness, CB ownership and Tensix pipeline domains prevents false fixes.",
+    evidence: "Pinned implementations, paired Watcher waypoints, checkpoint flow, delay A/B and four repeatable labs.",
+    next: "Run the data-before-signal lab with targeted write delay and preserve the NoC timeline separately.",
+    destination: "Async kernels and debugging chapters",
+    page: "./discussion-blackhole-synchronization.html",
+  },
+  {
     id: "OPT-01",
     track: "optimization",
     status: "experiment",
@@ -207,6 +219,7 @@ function DiscussionApp() {
           <div className="case-chain-list">
             <a className="case-chain" href="./discussion-blackhole-bringup.html"><span>CASE CHAIN 01 · BLACKHOLE BRING-UP</span><h3>Prove the BRISC/NCRISC boundary before blaming the compiler.</h3><p>Eight decisions connect Watcher waypoints, binary readback, operation entry, compiler A/B and regression closure.</p><i>Open detailed Q&amp;A →</i></a>
             <a className="case-chain transformer" href="./discussion-transformer-blackhole-optimization.html"><span>CASE CHAIN 02 · TRANSFORMER OPTIMIZATION</span><h3>Optimize the path, not the model name.</h3><p>Split prefill and decode, follow TTNN into TT-Metal, and keep every speed claim behind a quality gate.</p><i>Open detailed Q&amp;A →</i></a>
+            <a className="case-chain" href="./discussion-blackhole-synchronization.html"><span>SUBPAGE 03 · BLACKHOLE SYNCHRONIZATION</span><h3>Fence is not one fence.</h3><p>Separate compiler, RISC-V, NoC, L1 semaphore, CB and internal Tensix hardware-wait contracts before debugging a race.</p><i>Open field guide →</i></a>
           </div>
           <div className="topic-controls">
             <div className="filter-group" role="group" aria-label="Filter by discussion track">
