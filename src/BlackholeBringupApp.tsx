@@ -27,6 +27,23 @@ const sourceLinks = {
   buildKey: `${sourceRoot}/tt_metal/jit_build/build.cpp#L369-L388`,
   config: `${sourceRoot}/tt_metal/api/tt-metalium/kernel_types.hpp#L53-L102`,
   readback: `${sourceRoot}/tt_metal/llrt/llrt.cpp#L190-L250`,
+  apiTargets: `${sourceRoot}/tests/tt_metal/tt_metal/CMakeLists.txt#L70-L86`,
+  kernelCreationTest: `${sourceRoot}/tests/tt_metal/tt_metal/api/test_kernel_creation.cpp#L36-L53`,
+  processorCompileTest: `${sourceRoot}/tests/tt_metal/tt_metal/api/test_kernel_compile_cache.cpp#L32-L68`,
+  compileKernel: `${sourceRoot}/tests/tt_metal/tt_metal/test_kernels/dataflow/reader_unary_push_4.cpp`,
+  directTests: `${sourceRoot}/tests/tt_metal/tt_metal/api/test_direct.cpp#L46-L317`,
+  directTestCases: `${sourceRoot}/tests/tt_metal/tt_metal/api/test_direct.cpp#L548-L595`,
+  directReaderKernel: `${sourceRoot}/tests/tt_metal/tt_metal/test_kernels/dataflow/unit_tests/dram/direct_reader_dram_to_l1.cpp`,
+  directWriterKernel: `${sourceRoot}/tests/tt_metal/tt_metal/test_kernels/dataflow/unit_tests/dram/direct_writer_l1_to_dram.cpp`,
+  combinedReaderKernel: `${sourceRoot}/tests/tt_metal/tt_metal/test_kernels/dataflow/unit_tests/dram/direct_reader_unary_2_0.cpp`,
+  combinedWriterKernel: `${sourceRoot}/tests/tt_metal/tt_metal/test_kernels/dataflow/unit_tests/dram/direct_writer_unary_2_0.cpp`,
+  threadSyncTest: `${sourceRoot}/tests/tt_metal/tt_metal/api/test_kernel_thread_sync.cpp#L77-L130`,
+  threadSyncKernel: `${sourceRoot}/tests/tt_metal/tt_metal/test_kernels/dataflow/kernel_thread_barrier.cpp`,
+  watcherTest: `${sourceRoot}/tests/tt_metal/tt_metal/debug_tools/watcher/test_waypoint.cpp#L54-L220`,
+  dprintTest: `${sourceRoot}/tests/tt_metal/tt_metal/debug_tools/device_print/test_print_output.cpp#L226-L231`,
+  callstackTest: `${sourceRoot}/tests/tt_metal/tt_metal/debug_tools/device_print/test_print_output.cpp#L640-L658`,
+  firmwareLoad: `${sourceRoot}/tt_metal/impl/device/firmware/risc_firmware_initializer.cpp#L1143-L1165`,
+  operationWrite: `${sourceRoot}/tt_metal/impl/kernels/kernel.cpp#L1079-L1092`,
 } as const;
 
 const decisionSteps: readonly DecisionStep[] = [
@@ -61,7 +78,7 @@ const decisionSteps: readonly DecisionStep[] = [
     title: "Test shared launch state",
     question: "Does BRISC publish LOAD/GO, and does NCRISC observe it after cache invalidation?",
     choice: "Treat BRISC as supervisor and shared subordinate state as the interface—there is no NCRISC→BRISC function call.",
-    yes: "If NCRISC reaches firmware R, stop blaming the pre-GO handshake.",
+    yes: "Firmware R proves launch preparation, but Blackhole may still be waiting for shared GO; require operation K before clearing handshake/handoff.",
     no: "Inspect DM1 enable, launch fields, cache visibility and the exact shared sync value.",
     artifact: "launch-state.txt + optional two-point DPRINT",
     sources: [
@@ -73,14 +90,15 @@ const decisionSteps: readonly DecisionStep[] = [
     id: "image",
     number: "04",
     title: "Prove image identity",
-    question: "Does the intended NCRISC ELF match device readback and the HAL load/entry mapping?",
-    choice: "Hash, read back and inspect sections before interpreting a failing PC.",
+    question: "Can the intended NCRISC image be proven at the actual L1 load range and HAL entry mapping?",
+    choice: "Hash and explicitly read a supported L1/config-buffer range; the readback environment flag is not blanket proof for Blackhole multicast writes.",
     yes: "Resolve the PC against the saved ELF, symbols, map and source.",
     no: "Fix stale-cache, binary span, load-address or transport errors first.",
     artifact: "kernel.elf + map + readback-hashes.txt",
     sources: [
       { label: "Blackhole HAL bases", href: sourceLinks.hal },
-      { label: "Kernel readback", href: sourceLinks.readback },
+      { label: "Unicast readback helper", href: sourceLinks.readback },
+      { label: "BH firmware multicast load", href: sourceLinks.firmwareLoad },
     ],
   },
   {
@@ -88,9 +106,9 @@ const decisionSteps: readonly DecisionStep[] = [
     number: "05",
     title: "Locate operation entry",
     question: "Does NCRISC progress from firmware R to operation K and then KD?",
-    choice: "Use R→K for entry/CRT/ABI and K→KD for the user kernel body.",
+    choice: "Use R→K for shared GO, handoff, image/entry, CRT/ABI and K→KD for the user kernel body.",
     yes: "K without KD means the failure is inside kernel_main or its generated instructions.",
-    no: "R without K means inspect operation entry, CRT/data initialization, relocation and ABI.",
+    no: "R without K means inspect shared GO, operation handoff, image/entry, CRT/data initialization, relocation and ABI.",
     artifact: "failing-pc.txt + ncrisc.dis",
     sources: [{ label: "NCRISC operation wrapper", href: sourceLinks.ncrisck }],
   },
@@ -136,16 +154,122 @@ const waypointRows = [
   ["BR never I", "BRISC reset / firmware entry", "Reset PC, firmware image, board state"],
   ["BR:GW · NC:W", "BRISC waits for host GO", "Host launch and dispatch message"],
   ["BR:GD/R · NC:W", "BRISC saw GO; NCRISC did not start", "DM1 enable, shared GO, cache visibility"],
-  ["NC:R · no NC:K", "Firmware calls toward operation entry", "ELF entry, load, CRT, relocation, ABI"],
+  ["NC:R · no NC:K", "Prepared; operation K not proven", "Shared GO, handoff, ELF entry, load, CRT, ABI"],
   ["NC:K · no NC:KD", "Inside kernel_main", "User wait, memory access, generated code"],
   ["NC:KD · no NC:D", "Body returned; postamble did not", "NoC checks, wrapper return, ABI"],
   ["NC:D · BR waits", "NCRISC completed", "DONE visibility or another subordinate"],
 ] as const;
 
+const waypointDefinitions = [
+  ["I", "firmware entered initialization"],
+  ["GW", "BRISC is waiting for host GO"],
+  ["GD", "BRISC observed host GO"],
+  ["W", "NCRISC waits for BRISC LOAD / GO"],
+  ["R", "NCRISC prepared this launch; operation handoff is next"],
+  ["K", "operation wrapper finished setup and is about to call kernel_main"],
+  ["KD", "kernel_main returned to the wrapper"],
+  ["NKFW / NKFD", "post-kernel NoC checks started / finished"],
+  ["D", "operation returned to persistent NCRISC firmware"],
+  ["NTW / NTD", "BRISC waits for / observed all enabled subordinates done"],
+] as const;
+
+const starRungs = [
+  {
+    level: "L0",
+    test: "Build the right suites",
+    processor: "HOST",
+    proves: "The API and debug-tool executables exist; the current local build initially contains only unit_tests_legacy.",
+    branch: "If absent, build unit_tests_api and unit_tests_debug_tools before interpreting a missing test.",
+    links: [{ label: "CMake targets", href: sourceLinks.apiTargets }],
+  },
+  {
+    level: "L1",
+    test: "TensixCreateKernelsOnComputeCores",
+    processor: "HOST API",
+    proves: "Kernel creation and configuration are accepted. It does not prove compilation, delivery or execution.",
+    branch: "Failure stays in API/configuration; a pass advances only to compilation.",
+    links: [{ label: "Host test", href: sourceLinks.kernelCreationTest }],
+  },
+  {
+    level: "L2",
+    test: "…DifferentProcessors",
+    processor: "R0 + R1 BUILD",
+    proves: "The same source produces separate RISCV_0 and RISCV_1 ELF files. Existence is not execution.",
+    branch: "Missing only R1 ELF localizes build selection; two ELFs advance to device tests.",
+    links: [
+      { label: "Host test", href: sourceLinks.processorCompileTest },
+      { label: "Kernel", href: sourceLinks.compileKernel },
+    ],
+  },
+  {
+    level: "L3",
+    test: "Watcher + DPRINT self-tests",
+    processor: "ALL RISCS",
+    proves: "The observation channel works before it is trusted to classify the target failure.",
+    branch: "Fix instrumentation first if its own tests fail; do not infer a firmware state from silence.",
+    links: [
+      { label: "Waypoint test", href: sourceLinks.watcherTest },
+      { label: "DPRINT test", href: sourceLinks.dprintTest },
+      { label: "Call-stack test", href: sourceLinks.callstackTest },
+    ],
+  },
+  {
+    level: "L4",
+    test: "ReaderOnly + WriterOnly",
+    processor: "RISCV_0 / BRISC",
+    proves: "BRISC executes real DRAM↔L1 transfers and the host verifies every returned word.",
+    branch: "If this fails, do not investigate NCRISC yet; fix baseline BRISC, memory or dispatch.",
+    links: [
+      { label: "Host tests", href: sourceLinks.directTests },
+      { label: "Reader kernel", href: sourceLinks.directReaderKernel },
+      { label: "Writer kernel", href: sourceLinks.directWriterKernel },
+    ],
+  },
+  {
+    level: "L5",
+    test: "Add NCRISC-only data check",
+    processor: "RISCV_1 / NCRISC",
+    proves: "A new one-core known-pattern test must prove NCRISC entry, NoC transfer, completion and output without BRISC operation code.",
+    branch: "R without K chooses shared GO/handoff/entry/CRT/ABI; K without KD chooses kernel_main; wrong data chooses NoC/addressing.",
+    links: [{ label: "Config API", href: sourceLinks.config }],
+  },
+  {
+    level: "L6",
+    test: "…ReaderWriter",
+    processor: "NCRISC + BRISC",
+    proves: "RISCV_1 reader and RISCV_0 writer cooperate through L1 and return verified DRAM data.",
+    branch: "If L4 and L5 pass but L6 fails, investigate shared state, buffer contract and cross-RISC ordering.",
+    links: [
+      { label: "Host mapping", href: sourceLinks.directTests },
+      { label: "Reader kernel", href: sourceLinks.combinedReaderKernel },
+      { label: "Writer kernel", href: sourceLinks.combinedWriterKernel },
+    ],
+  },
+  {
+    level: "L7",
+    test: "BarrierSynchronizesThreads",
+    processor: "BRISC ↔ NCRISC",
+    proves: "The explicit RISCV_0 writer / RISCV_1 reader barrier contract produces verified L1 state.",
+    branch: "A failure after individual passes selects synchronization rather than compiler delivery.",
+    links: [
+      { label: "Host test", href: sourceLinks.threadSyncTest },
+      { label: "Kernel", href: sourceLinks.threadSyncKernel },
+    ],
+  },
+  {
+    level: "L8",
+    test: "…ReaderDatacopyWriter",
+    processor: "DM + TRISC",
+    proves: "Reader → compute/datacopy → writer works before moving to full model kernels.",
+    branch: "A first failure here selects circular buffers, compute setup or TRISC—not BRISC/NCRISC boot.",
+    links: [{ label: "Host test", href: sourceLinks.directTestCases }],
+  },
+] as const;
+
 const proofGates = [
   "Preprocessed source hashes match.",
   "Compile and link commands change only the intended toolchain paths.",
-  "Host ELF and device readback agree.",
+  "Host materialized spans and a supported explicit device readback agree.",
   "The failing PC stays in the same minimized source interval.",
   "The outcome follows compiler A/B across clean repeated runs.",
   "The minimized input is valid—no source UB or ABI violation.",
@@ -179,6 +303,7 @@ function BlackholeBringupApp() {
       <header className="bringup-topbar">
         <a className="bringup-brand" href="./index.html"><b>TT•SIM</b><span>discussion / chain 01</span></a>
         <nav aria-label="Page navigation">
+          <a href="#star">STAR case</a>
           <a href="#model">Control flow</a>
           <a href="#decisions">Decision lab</a>
           <a href="#proof">Compiler proof</a>
@@ -209,6 +334,50 @@ function BlackholeBringupApp() {
         <section className="bringup-question">
           <span>THE ONE-SENTENCE ANSWER</span>
           <p>Use Watcher to find the first missing <b>GW → GD → W → R → K → KD → D</b> transition, prove that the intended NCRISC ELF reached the device, then run a same-input compiler A/B with separate caches. Anything less proves sensitivity—not a compiler defect.</p>
+        </section>
+
+        <section id="star" className="bringup-section star-section">
+          <div className="bringup-section-heading light">
+            <span>STAR / FIRST-SILICON SCENARIO</span>
+            <h2>Start with modules.<br/>Earn the root cause.</h2>
+            <p>This is a source-backed reconstruction and repeatable lab, not a claim that the missing historical evidence has been recovered.</p>
+          </div>
+
+          <div className="star-grid">
+            <article className="star-card situation"><span>S / SITUATION</span><strong>01</strong><h3>First Blackhole unit-test bring-up</h3><p>A one-core test involving BRISC and NCRISC stalls although both processor ELFs can be built. The remembered hypothesis is “the compiler generated bad NCRISC code,” but compilation alone does not establish delivery, entry or execution.</p></article>
+            <article className="star-card task"><span>T / TASK</span><strong>02</strong><h3>Find the first broken boundary</h3><p>Separate host configuration, ELF generation, per-RISC execution, shared synchronization and returned data. Prove a compiler defect only if one valid input changes outcome with the compiler as the sole variable.</p></article>
+            <article className="star-card action"><span>A / ACTION</span><strong>03</strong><h3>Climb an isolation ladder</h3><p>Build the API/debug suites, validate Watcher and DPRINT, run BRISC alone, add an NCRISC-only data test, combine both RISCs, add the barrier and TRISC, then repeat the smallest failure in slow and fast dispatch.</p></article>
+            <article className="star-card result"><span>R / RESULT</span><strong>04</strong><h3>One real test gap is exposed</h3><p>The reviewed compile test checks that two ELFs exist; the combined reader/writer executes both processors. A standalone NCRISC result-verification rung is still required. The historical compiler verdict therefore remains open.</p></article>
+          </div>
+
+          <div className="star-learning">
+            <span>L / LEARNING</span>
+            <p><b>Compiled ELF ≠ delivered bytes ≠ entry executed ≠ <code>kernel_main</code> returned ≠ correct data.</b> Test each boundary independently. Optimization sensitivity is a locator, not proof of a compiler defect.</p>
+          </div>
+
+          <div className="star-ladder" role="table" aria-label="Blackhole module isolation ladder">
+            <div className="star-ladder-row head" role="row"><b>LEVEL / TEST</b><b>PROCESSOR</b><b>WHAT A PASS PROVES</b><b>FAILURE BRANCH + SOURCE</b></div>
+            {starRungs.map((rung) => (
+              <div className="star-ladder-row" role="row" key={rung.level}>
+                <div><span>{rung.level}</span><strong>{rung.test}</strong></div>
+                <code>{rung.processor}</code>
+                <p>{rung.proves}</p>
+                <div className="star-branch"><p>{rung.branch}</p><nav>{rung.links.map((link) => <a key={link.href} href={link.href}>{link.label} ↗</a>)}</nav></div>
+              </div>
+            ))}
+          </div>
+
+          <div className="star-command-grid">
+            <pre><code>{`# Current checkout: build these suites first
+cmake --build build --target \\
+  unit_tests_api unit_tests_debug_tools -j"$(nproc)"
+
+API=./build/test/tt_metal/unit_tests_api
+DBG=./build/test/tt_metal/unit_tests_debug_tools`}</code></pre>
+            <pre><code>{`$API --gtest_filter='MeshDeviceFixture.TensixTestEquivalentDataMovementKernelsWithDifferentProcessors'
+
+$DBG --gtest_filter='MeshWatcherFixture.TestWatcherWaypoints:DevicePrintOutputFixture.PrintConcurrentAllRiscs'`}</code></pre>
+          </div>
         </section>
 
         <section id="model" className="bringup-section bringup-model-section">
@@ -260,6 +429,11 @@ unset TT_METAL_DEVICE_PROFILER
               <a href="https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/watcher.html">Official Watcher guide ↗</a>
             </aside>
           </div>
+          <div className="waypoint-definitions" aria-label="Watcher waypoint glossary">
+            <header><span>WAYPOINT GLOSSARY</span><p>These short strings are Watcher progress markers, not C++ function names.</p></header>
+            <div>{waypointDefinitions.map(([mark, meaning]) => <article key={mark}><code>{mark}</code><p>{meaning}</p></article>)}</div>
+          </div>
+          <p className="waypoint-rule"><b>Read the interval, not only the last letter.</b> <code>R</code> without <code>K</code> points to shared GO, operation handoff, image/entry, CRT or ABI. <code>K</code> without <code>KD</code> proves entry and setup completed, so investigate waits, circular buffers, NoC/memory access and generated instructions inside <code>kernel_main</code>.</p>
         </section>
 
         <section id="decisions" className="bringup-section decision-section">
@@ -308,7 +482,7 @@ unset TT_METAL_DEVICE_PROFILER
           <div className="binary-pipeline">
             <article><span>01</span><b>Preserve</b><p>Fresh compiler-specific cache, saved temporaries, compile/link commands and map.</p></article>
             <i>→</i>
-            <article><span>02</span><b>Verify</b><p>Enable kernel readback; compare host image with what was written to the device.</p></article>
+            <article><span>02</span><b>Verify</b><p>Use a supported explicit L1/config-buffer readback. The environment flag alone does not prove Blackhole multicast operation writes.</p></article>
             <i>→</i>
             <article><span>03</span><b>Map</b><p>Read sections and symbols, then resolve the failing PC against that exact ELF.</p></article>
             <i>→</i>
@@ -320,6 +494,7 @@ export TT_METAL_FORCE_JIT_COMPILE=1
 export TT_METAL_KERNEL_MAP=1
 export TT_METAL_LOG_KERNELS_COMPILE_COMMANDS=1
 export TT_METAL_RISCV_DEBUG_INFO=1
+# Useful only on paths that implement unicast readback:
 export TT_METAL_KERNEL_READBACK_ENABLE=1`}</code></pre>
             <pre><code>{`TOOLS=runtime/sfpi/compiler/bin
 $TOOLS/riscv-tt-elf-readelf -hSW kernel.elf
@@ -330,7 +505,9 @@ $TOOLS/riscv-tt-elf-addr2line -e kernel.elf \
           </div>
           <SourceLinks links={[
             { label: "Blackhole firmware bases", href: sourceLinks.hal },
-            { label: "Kernel readback check", href: sourceLinks.readback },
+            { label: "Unicast write/readback helper", href: sourceLinks.readback },
+            { label: "BH firmware multicast caveat", href: sourceLinks.firmwareLoad },
+            { label: "Operation binary write path", href: sourceLinks.operationWrite },
             { label: "Saved build intermediates", href: sourceLinks.buildMap },
           ]} />
         </section>
