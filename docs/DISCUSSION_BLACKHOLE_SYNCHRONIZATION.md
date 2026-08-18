@@ -306,14 +306,22 @@ flowchart LR
     S -->|tile_regs_acquire releases| M
 ```
 
-### Do not confuse the two “eight semaphore” limits
+### Do not confuse 16 program-visible slots with eight LLK hardware semaphores
 
-The program API's allocation limit and the LLK hardware bank both use the
-number eight in this revision, but they are different namespaces, storage and
-protocols:
+These are different namespaces, storage and protocols. In this pinned
+revision, Metalium exposes **16 program L1 semaphore IDs per core** (`0…15`),
+while the Blackhole LLK names **eight internal Tensix hardware semaphore IDs**
+(`0…7`). `CreateSemaphore` finds a free program ID across the requested core
+range; it does not allocate one of the LLK counters.
+
+Sources: [`semaphore.hpp:14–17`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/buffers/semaphore.hpp#L14-L17),
+[`program.cpp:1984–2051`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/program.cpp#L1984-L2051)
+and
+[`ckernel_structs.h:12–27`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/tt-llk/tt_llk_blackhole/common/inc/ckernel_structs.h#L12-L27).
 
 | Property | Program L1 semaphore | LLK Tensix hardware semaphore |
 |---|---|---|
+| IDs in this revision | 16 IDs, `0…15`, per core | 8 IDs, `0…7`, internal to the pipeline |
 | Storage | Four-byte word in L1 | Internal four-bit counter |
 | Typical scope | Across cores via NoC | Inside one Tensix pipeline |
 | Wait | RISC polling loop | `TTI_SEMWAIT` hardware-resource stall |
@@ -454,7 +462,23 @@ core, then can dump CB metadata and selected L1/destination-register state. A
 global checkpoint layers a monotonic cross-core NoC semaphore barrier around
 the intra-core barriers.
 
-Source: [`checkpoint.h`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/debug/checkpoint.h)
+Enable the checkpoint macros before the JIT build. Add DPRINT only when dump
+output is needed; without it the checkpoint still acts as a barrier:
+
+```bash
+export TT_METAL_CHECKPOINT=1
+export TT_METAL_DPRINT_CORES=0,0  # optional print backend for core (0,0)
+```
+
+`TT_METAL_CHECKPOINT` is read at JIT compile time. If its value changes, use an
+isolated `TT_METAL_CACHE` directory or clear only the TT-Metal kernel cache so
+the kernels are rebuilt; otherwise an old cached binary can make the macro
+appear ineffective. Include `api/debug/checkpoint.h` and place the same named
+checkpoint in every active reader, writer and compute kernel participating on
+that core.
+
+Source: [`checkpoint.h`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/debug/checkpoint.h),
+[`rtoptions.cpp:525–529`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/rtoptions.cpp#L525-L529)
 and the [official Debug Checkpoints guide](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/checkpoint.html).
 
 ```mermaid

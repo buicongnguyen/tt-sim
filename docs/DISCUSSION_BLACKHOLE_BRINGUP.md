@@ -37,15 +37,24 @@ completed when those artifacts are recovered.
 Debug the smallest boundary first:
 
 ```text
-host launch → BRISC sends LOAD/GO → NCRISC sees GO → NCRISC operation entry
-            → kernel_main → NCRISC DONE → BRISC observes all subordinates DONE
+host launch GO → BRISC sees host GO → BRISC writes DM1 LOAD → NCRISC prepares (R)
+               → BRISC writes DM1 GO → NCRISC calls its operation ELF
+               → CRT + separate host-GO mailbox check → K → kernel_main → KD
+               → NCRISC D/DONE → BRISC observes all enabled subordinates DONE
 ```
+
+There are **two GO-bearing locations** here. `subordinate_sync->dm1` is the
+BRISC-to-NCRISC `LOAD/GO/DONE` handshake. The operation wrapper's
+`wait_for_go_message()` reads `mailboxes->go_messages[...]`, the launch-level
+host/dispatcher GO mailbox. They are not the same word and should be captured
+separately when `R` appears without `K`.
 
 Use Watcher waypoints to locate the first missing transition. If execution
 reaches NCRISC operation waypoint `K` but not `KD`, the failure is inside
 `kernel_main`; if it reaches NCRISC firmware `R` but never operation `K`, inspect
-the shared GO wait, operation handoff, ELF entry, CRT/data initialization, load
-image and ABI. Only after
+the DM1 subordinate-GO wait, operation handoff, ELF entry, CRT/data
+initialization, separate launch-level host-GO mailbox, load image and ABI. Only
+after
 binary readback matches and the same build input fails with compiler A but
 passes with compiler B should the investigation be reduced to a compiler
 reproducer.
@@ -94,6 +103,8 @@ The decision points correspond to real code boundaries in the pinned source:
   completion](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/ncrisc.cc#L77-L192).
 - [The NCRISC operation wrapper initializes data, waits for its run message and
   brackets `kernel_main` with `K`/`KD`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc#L38-L95).
+- [The operation wrapper's `wait_for_go_message()` polls the separate
+  launch-level `go_messages` mailbox](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/internal/firmware_common.h#L194-L206).
 - [Blackhole HAL assigns independent BRISC and NCRISC firmware bases and reset
   launch values](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/hal/tt-1xx/blackhole/bh_hal_tensix.cpp#L97-L147).
 - [The JIT selects the TT-packaged RISC-V compiler and composes common flags](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/jit_build/build.cpp#L124-L205).
@@ -388,7 +399,7 @@ for exactly one RISC in
 [`main.ld`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/toolchain/main.ld#L1-L121).
 It then writes triples of `segment VMA : trim bound : size limit` into the
 non-loadable `.segments` metadata section in
-[`script_tng.ld`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/toolchain/script_tng.ld#L220-L250).
+[`script_tng.ld`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/toolchain/script_tng.ld#L220-L244).
 
 Inspect every ELF with the matching SFPI binutils:
 
@@ -514,7 +525,7 @@ These are Watcher waypoint strings, not function names:
 | `GW` | BRISC waits for host launch `GO` | host/dispatch launch message has not been accepted |
 | `GD` | BRISC observed host `GO` | host-to-BRISC launch boundary passed |
 | `W` | NCRISC firmware waits for BRISC `LOAD/GO` | DM1 enable, shared state or visibility problem |
-| `R` | NCRISC prepared the launch; operation handoff is next | shared GO wait, `kernel_lma` handoff, image/entry, CRT or ABI |
+| `R` | NCRISC prepared the launch; operation handoff is next | DM1 GO wait, `kernel_lma` handoff, image/entry, CRT, launch-level host-GO mailbox or ABI |
 | `K` | operation wrapper completed CRT/setup and is immediately before `kernel_main` | failure is in `kernel_main`: wait, CB, NoC, bad address or generated instruction |
 | `KD` | `kernel_main` returned | user body completed; inspect post-kernel checks and wrapper return |
 | `NKFW` / `NKFD` | post-kernel NoC check begins / ends | distinguish the postamble from the user kernel |
@@ -524,14 +535,16 @@ These are Watcher waypoint strings, not function names:
 The important diagnostic sentence is therefore:
 
 > **`R` without `K` and `K` without `KD` are different problems.** `R→K`
-> covers the shared-GO wait, operation handoff, image/entry, CRT and ABI.
+> covers the DM1 subordinate-GO wait, operation handoff, image/entry, CRT,
+> the separate launch-level host-GO mailbox check and ABI.
 > `K→KD` covers the user `kernel_main` body and its waits, memory traffic and
 > generated instructions.
 
 One nuance: in the reviewed `ncrisc.cc`, `R` appears before the Blackhole loop
 that waits for subordinate `GO` and before the `kernel_lma` call. Therefore an
 `R`-without-`K` result must not be described too narrowly as “bad ELF entry”; it
-also includes a shared-GO value that never arrives.
+also includes a DM1 GO value that never arrives and the operation wrapper's
+separate launch-level host-GO mailbox check.
 
 ```mermaid
 sequenceDiagram
@@ -544,10 +557,11 @@ sequenceDiagram
     N->>N: waypoint W while waiting
     N->>N: launch preparation; waypoint R
     loop Blackhole subordinate wait
-        N->>S: invalidate + read shared GO
+        N->>S: invalidate + read DM1 GO
     end
     N->>O: call kernel_lma
     O->>O: CRT and operation setup
+    O->>O: poll launch-level host GO mailbox
     O->>O: waypoint K
     O->>U: call kernel_main
     U-->>O: return
@@ -562,12 +576,13 @@ Code beside the sequence:
 - [BRISC launch and `NTW/NTD` completion wait](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L354-L590)
 - [NCRISC firmware `W/R/D`, GO polling and `kernel_lma`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/ncrisc.cc#L109-L192)
 - [NCRISC operation `K/KD/NKFW/NKFD`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc#L38-L95)
+- [Launch-level `wait_for_go_message()` mailbox poll](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/internal/firmware_common.h#L194-L206)
 
 ```mermaid
 flowchart TD
     W{Last NCRISC interval}
     W -->|stays at W| A[BRISC notification, DM1 enable, shared LOAD/GO]
-    W -->|R but no K| B[shared GO, handoff, delivered image, entry, CRT, ABI]
+    W -->|R but no K| B[DM1 GO, handoff, image, entry, CRT, host-GO mailbox, ABI]
     W -->|K but no KD| C[kernel_main: waits, CBs, NoC, memory, generated code]
     W -->|KD but no D| D[postchecks, wrapper return, return ABI]
     W -->|D but BRISC waits| E[DONE visibility or another enabled subordinate]
@@ -610,8 +625,9 @@ root cause:         OPEN until all compiler A/B gates pass
    data tests make the combined failure interpretable.
 3. **Validate the debugger before trusting silence.** Watcher and DPRINT have
    their own unit tests.
-4. **Use the first missing interval.** `R` without `K` is a shared-GO,
-   handoff/entry class; `K` without `KD` is a `kernel_main` class.
+4. **Use the first missing interval.** `R` without `K` is a subordinate-GO,
+   handoff/entry/CRT/launch-mailbox class; `K` without `KD` is a `kernel_main`
+   class.
 5. **Dispatch mode is a controlled experiment.** Run only a reproducer that
    supports both paths; a hard-coded slow-dispatch call cannot test fast
    dispatch.
@@ -632,7 +648,7 @@ flowchart TD
     C -- yes --> D{NCRISC leaves W and reaches R?}
     D -- no --> D1[DM1 enable, LOAD/GO value, cache visibility, shared sync]
     D -- yes --> E{NCRISC operation reaches K?}
-    E -- no --> E1[Shared GO, operation handoff, ELF load, entry, CRT, ABI]
+    E -- no --> E1[DM1 GO, operation handoff, ELF load, entry, CRT, host-GO mailbox, ABI]
     E -- yes --> F{Operation reaches KD?}
     F -- no --> F1[User kernel, NoC wait, semaphore, bad generated code]
     F -- yes --> G{Firmware reaches D and BRISC completes?}
@@ -653,26 +669,33 @@ links beside each graph.
 
 ## Q1 — What actually happens between BRISC and NCRISC?
 
-**Answer:** BRISC is the supervisor in this path. After initialization it
-publishes launch state in shared memory. On Blackhole, `start_ncrisc_kernel_run_early`
-writes `RUN_SYNC_MSG_GO` to the DM1 subordinate field. NCRISC invalidates its L1
-cache while polling, observes the state, and eventually calls its own operation
-entry. When the operation returns, NCRISC writes `RUN_SYNC_MSG_DONE`; BRISC waits
-until all enabled subordinates are done.
+**Answer:** BRISC is the supervisor in this path. After seeing the launch-level
+host GO, it first writes `RUN_SYNC_MSG_LOAD` so NCRISC can prepare CB and launch
+state. On Blackhole, `start_ncrisc_kernel_run_early` later writes
+`RUN_SYNC_MSG_GO` to the DM1 subordinate field. NCRISC invalidates its L1 cache
+while polling this field, observes GO, and calls its own operation entry. The
+operation wrapper performs CRT setup, separately verifies the launch-level
+`go_messages[...]` host GO, then enters `kernel_main`. When it returns, NCRISC
+writes `RUN_SYNC_MSG_DONE`; BRISC waits until all enabled subordinates are done.
 
 ```mermaid
 sequenceDiagram
-    participant H as Host launch state
+    participant H as Host/dispatcher GO mailbox
     participant B as BRISC firmware
     participant S as Shared subordinate sync
     participant N as NCRISC firmware
     participant K as NCRISC operation ELF
     H->>B: RUN_MSG_GO + launch fields
-    B->>S: LOAD, then GO for DM1
-    N->>S: poll + invalidate L1 cache
-    S-->>N: GO observed
+    B->>S: DM1 LOAD
+    N->>S: wake, prepare CB and launch state
+    N->>N: waypoint R
+    B->>S: DM1 GO
+    N->>S: poll + invalidate until GO
     N->>K: call kernel_lma entry
-    K->>K: CRT → wait_for_go_message → kernel_main
+    K->>K: CRT
+    K->>H: wait_for_go_message reads host GO mailbox
+    H-->>K: RUN_MSG_GO already visible
+    K->>K: waypoint K → kernel_main → KD
     K-->>N: return stack usage
     N->>S: DONE
     B->>S: wait for all enabled subordinates
@@ -683,6 +706,7 @@ Code beside the graph:
 - [BRISC `start_ncrisc_kernel_run_early`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L290-L298)
 - [BRISC launch loop and completion wait](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L390-L590)
 - [NCRISC wait/call/complete path](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/ncrisc.cc#L77-L192)
+- [Launch-level GO mailbox poll](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/internal/firmware_common.h#L194-L206)
 
 ## Q2 — What is the first decision I make?
 
@@ -751,7 +775,7 @@ running, so leave it off for the first pass.
 | BRISC never reaches `I` | BRISC firmware/reset/load problem | firmware image and reset PC |
 | BRISC `GW`, NCRISC `W` | BRISC is waiting for host GO; NCRISC is idle | host launch/dispatch state |
 | BRISC `GD` or `R`, NCRISC remains `W` | host GO reached BRISC, NCRISC did not start | DM1 enable, shared `LOAD/GO`, cache visibility |
-| NCRISC firmware `R`, no operation `K` | launch preparation ran, but operation entry is not proven | shared GO, `kernel_lma` handoff, load address, ELF entry, CRT/ABI |
+| NCRISC firmware `R`, no operation `K` | launch preparation ran, but operation K is not proven | DM1 GO, `kernel_lma` handoff, load address, ELF entry, CRT, launch-level host-GO mailbox, ABI |
 | NCRISC operation `K`, no `KD` | entered `kernel_main`, did not return | user kernel, wait, memory fault, generated instructions |
 | operation `KD`, no firmware `D` | user body returned; postamble/return failed | NOC flush assertions, wrapper return, ABI |
 | NCRISC firmware `D`, BRISC does not finish | NCRISC ran; supervisor did not observe completion | DONE visibility or another enabled subordinate |
@@ -760,8 +784,8 @@ running, so leave it off for the first pass.
 flowchart TD
     W{Latest paired waypoints?}
     W -->|BR:GW / NC:W| H[Host GO or launch configuration]
-    W -->|BR:R / NC:W| S[Shared GO visibility or DM1 enable]
-    W -->|NC:R / no NC:K| E[Shared GO, handoff, entry, load, CRT or ABI]
+    W -->|BR:R / NC:W| S[DM1 LOAD/GO visibility or DM1 enable]
+    W -->|NC:R / no NC:K| E[DM1 GO, handoff, entry, load, CRT, host-GO mailbox or ABI]
     W -->|NC:K / no NC:KD| U[Inside user kernel]
     W -->|NC:KD / no NC:D| P[Postamble or return ABI]
     W -->|NC:D / BR waits| D[DONE visibility or another subordinate]

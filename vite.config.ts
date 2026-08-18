@@ -18,6 +18,8 @@ export default defineConfig({
         blackholeBringup: fileURLToPath(new URL("./discussion-blackhole-bringup.html", import.meta.url)),
         blackholeSynchronization: fileURLToPath(new URL("./discussion-blackhole-synchronization.html", import.meta.url)),
         transformerOptimization: fileURLToPath(new URL("./discussion-transformer-blackhole-optimization.html", import.meta.url)),
+        presentation: fileURLToPath(new URL("./discussion-presentation.html", import.meta.url)),
+        quantization: fileURLToPath(new URL("./discussion-quantization.html", import.meta.url)),
       },
     },
   },

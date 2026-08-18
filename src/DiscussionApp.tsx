@@ -143,6 +143,18 @@ const topics: readonly DiscussionTopic[] = [
     destination: "Transformer optimization chapter",
     page: "./discussion-transformer-blackhole-optimization.html",
   },
+  {
+    id: "OPT-07",
+    track: "optimization",
+    status: "evidence",
+    title: "Apply mixed precision and quantization to an LLM",
+    question: "Which TTNN/TT-Metal datatype is actually legal and useful for each LLM tensor role?",
+    hypothesis: "The source-supported path is BF16 baseline → BFP8 by role → selective BFP4, while INT8/MX require narrower operation-level proof.",
+    evidence: "Pinned datatype, linear, quantization, TT-Transformers precision-policy and Blackhole LLK sources.",
+    next: "Run the accuracy/performance presets, then sweep FF1/FF3 BFP4 in one decoder under model-quality and warm-performance gates.",
+    destination: "Quantization and mixed-precision chapter",
+    page: "./discussion-quantization.html",
+  },
 ];
 
 const lifecycle = [
@@ -220,6 +232,8 @@ function DiscussionApp() {
             <a className="case-chain" href="./discussion-blackhole-bringup.html"><span>CASE CHAIN 01 · BLACKHOLE BRING-UP</span><h3>Prove the BRISC/NCRISC boundary before blaming the compiler.</h3><p>Eight decisions connect Watcher waypoints, binary readback, operation entry, compiler A/B and regression closure.</p><i>Open detailed Q&amp;A →</i></a>
             <a className="case-chain transformer" href="./discussion-transformer-blackhole-optimization.html"><span>CASE CHAIN 02 · TRANSFORMER OPTIMIZATION</span><h3>Optimize the path, not the model name.</h3><p>Split prefill and decode, follow TTNN into TT-Metal, and keep every speed claim behind a quality gate.</p><i>Open detailed Q&amp;A →</i></a>
             <a className="case-chain" href="./discussion-blackhole-synchronization.html"><span>SUBPAGE 03 · BLACKHOLE SYNCHRONIZATION</span><h3>Fence is not one fence.</h3><p>Separate compiler, RISC-V, NoC, L1 semaphore, CB and internal Tensix hardware-wait contracts before debugging a race.</p><i>Open field guide →</i></a>
+            <a className="case-chain presentation" href="./discussion-presentation.html"><span>SUBPAGE 04 · 30-MINUTE PRESENTATION</span><h3>Tell the research story without outrunning the evidence.</h3><p>Copy-ready slides, speaker notes, two small boot/launch diagrams and defensible answers to likely technical questions.</p><i>Open presentation room →</i></a>
+            <a className="case-chain quantization" href="./discussion-quantization.html"><span>SUBPAGE 05 · LLM QUANTIZATION</span><h3>An enum is not an operator promise.</h3><p>Choose BF16, BFP8, BFP4, integer or MX paths by tensor role, API legality, quality budget and measured traffic.</p><i>Open precision lab →</i></a>
           </div>
           <div className="topic-controls">
             <div className="filter-group" role="group" aria-label="Filter by discussion track">

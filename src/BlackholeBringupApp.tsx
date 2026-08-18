@@ -23,13 +23,14 @@ const sourceLinks = {
   briscLoop: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L354-L590`,
   ncriscLoop: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/ncrisc.cc#L77-L192`,
   ncrisck: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc#L38-L95`,
+  launchGoWait: `${sourceRoot}/tt_metal/hw/inc/internal/firmware_common.h#L194-L206`,
   hal: `${sourceRoot}/tt_metal/llrt/hal/tt-1xx/blackhole/bh_hal_tensix.cpp#L97-L147`,
   compiler: `${sourceRoot}/tt_metal/jit_build/build.cpp#L124-L205`,
   sfpiPin: `${sourceRoot}/tt_metal/sfpi-version`,
   sfpiCmake: `${sourceRoot}/tt_metal/hw/CMakeLists.txt#L41-L173`,
   memoryMap: `${sourceRoot}/tt_metal/hw/inc/internal/tt-1xx/blackhole/dev_mem_map.h#L31-L123`,
   linkerMain: `${sourceRoot}/tt_metal/hw/toolchain/main.ld#L1-L121`,
-  linkerSegments: `${sourceRoot}/tt_metal/hw/toolchain/script_tng.ld#L220-L250`,
+  linkerSegments: `${sourceRoot}/tt_metal/hw/toolchain/script_tng.ld#L220-L244`,
   elfLoader: `${sourceRoot}/tt_metal/llrt/tt_elffile.cpp#L358-L555`,
   memoryPacker: `${sourceRoot}/tt_metal/llrt/tt_memory.cpp#L40-L101`,
   dispatchPack: `${sourceRoot}/tt_metal/impl/program/dispatch.cpp#L480-L533`,
@@ -88,7 +89,7 @@ const decisionSteps: readonly DecisionStep[] = [
     number: "02",
     title: "Find the missing boundary",
     question: "Which BRISC/NCRISC Watcher waypoint is the last one observed?",
-    choice: "Run Watcher alone and classify initialization, host GO, shared GO, operation entry or kernel body.",
+    choice: "Run Watcher alone and classify initialization, host/dispatcher GO, DM1 LOAD/GO, operation entry or kernel body.",
     yes: "Select one short code interval using GW/GD/W/R/K/KD/D.",
     no: "If no waypoint is valid, return to reset PC, firmware load and board state.",
     artifact: "watcher.log + paired-waypoint.txt",
@@ -103,7 +104,7 @@ const decisionSteps: readonly DecisionStep[] = [
     title: "Test shared launch state",
     question: "Does BRISC publish LOAD/GO, and does NCRISC observe it after cache invalidation?",
     choice: "Treat BRISC as supervisor and shared subordinate state as the interface—there is no NCRISC→BRISC function call.",
-    yes: "Firmware R proves launch preparation, but Blackhole may still be waiting for shared GO; require operation K before clearing handshake/handoff.",
+    yes: "Firmware R proves launch preparation, but Blackhole may still be waiting for DM1 GO or the wrapper's host-GO mailbox; require operation K before clearing handshake/handoff.",
     no: "Inspect DM1 enable, launch fields, cache visibility and the exact shared sync value.",
     artifact: "launch-state.txt + optional two-point DPRINT",
     sources: [
@@ -131,11 +132,14 @@ const decisionSteps: readonly DecisionStep[] = [
     number: "05",
     title: "Locate operation entry",
     question: "Does NCRISC progress from firmware R to operation K and then KD?",
-    choice: "Use R→K for shared GO, handoff, image/entry, CRT/ABI and K→KD for the user kernel body.",
+    choice: "Use R→K for DM1 GO, handoff, image/entry, CRT, the separate host-GO mailbox check and ABI; use K→KD for the user kernel body.",
     yes: "K without KD means the failure is inside kernel_main or its generated instructions.",
-    no: "R without K means inspect shared GO, operation handoff, image/entry, CRT/data initialization, relocation and ABI.",
+    no: "R without K means inspect DM1 GO, operation handoff, image/entry, CRT/data initialization, launch-level host GO, relocation and ABI.",
     artifact: "failing-pc.txt + ncrisc.dis",
-    sources: [{ label: "NCRISC operation wrapper", href: sourceLinks.ncrisck }],
+    sources: [
+      { label: "NCRISC operation wrapper", href: sourceLinks.ncrisck },
+      { label: "Launch-level GO mailbox", href: sourceLinks.launchGoWait },
+    ],
   },
   {
     id: "reduce",
@@ -178,8 +182,8 @@ const decisionSteps: readonly DecisionStep[] = [
 const waypointRows = [
   ["BR never I", "BRISC reset / firmware entry", "Reset PC, firmware image, board state"],
   ["BR:GW · NC:W", "BRISC waits for host GO", "Host launch and dispatch message"],
-  ["BR:GD/R · NC:W", "BRISC saw GO; NCRISC did not start", "DM1 enable, shared GO, cache visibility"],
-  ["NC:R · no NC:K", "Prepared; operation K not proven", "Shared GO, handoff, ELF entry, load, CRT, ABI"],
+  ["BR:GD/R · NC:W", "BRISC saw host GO; NCRISC did not start", "DM1 enable, DM1 LOAD/GO, cache visibility"],
+  ["NC:R · no NC:K", "Prepared; operation K not proven", "DM1 GO, handoff, ELF entry, load, CRT, host-GO mailbox, ABI"],
   ["NC:K · no NC:KD", "Inside kernel_main", "User wait, memory access, generated code"],
   ["NC:KD · no NC:D", "Body returned; postamble did not", "NoC checks, wrapper return, ABI"],
   ["NC:D · BR waits", "NCRISC completed", "DONE visibility or another subordinate"],
@@ -255,7 +259,7 @@ const starRungs = [
     test: "Add NCRISC-only data check",
     processor: "RISCV_1 / NCRISC",
     proves: "A new one-core known-pattern test must prove NCRISC entry, NoC transfer, completion and output without BRISC operation code.",
-    branch: "R without K chooses shared GO/handoff/entry/CRT/ABI; K without KD chooses kernel_main; wrong data chooses NoC/addressing.",
+    branch: "R without K chooses DM1 GO/handoff/entry/CRT/host-GO mailbox/ABI; K without KD chooses kernel_main; wrong data chooses NoC/addressing.",
     links: [{ label: "Config API", href: sourceLinks.config }],
   },
   {
@@ -525,18 +529,18 @@ sha256sum "$ELF" /tmp/ncrisc-text.bin`}</code></pre>
           <div className="handshake-flow" aria-label="Blackhole BRISC and NCRISC launch sequence">
             <a href={sourceLinks.briscLoop} className="flow-node host"><small>HOST STATE</small><b>RUN_MSG_GO</b><span>launch fields become visible</span></a>
             <i aria-hidden="true">→</i>
-            <a href={sourceLinks.briscLaunch} className="flow-node brisc"><small>BRISC FW</small><b>LOAD → GO</b><span>publish DM1 subordinate state</span></a>
+            <a href={sourceLinks.briscLaunch} className="flow-node brisc"><small>BRISC FW</small><b>DM1 LOAD · GO</b><span>wake NCRISC, then release its prepared launch</span></a>
             <i aria-hidden="true">→</i>
-            <a href={sourceLinks.ncriscLoop} className="flow-node sync"><small>NCRISC FW</small><b>W → R</b><span>poll, invalidate, call kernel_lma</span></a>
+            <a href={sourceLinks.ncriscLoop} className="flow-node sync"><small>NCRISC FW</small><b>W → R → entry</b><span>LOAD wakes; prepare; wait DM1 GO; call kernel_lma</span></a>
             <i aria-hidden="true">→</i>
-            <a href={sourceLinks.ncrisck} className="flow-node kernel"><small>OP ELF</small><b>K → KD</b><span>CRT, kernel_main, return</span></a>
+            <a href={sourceLinks.launchGoWait} className="flow-node kernel"><small>OP ELF</small><b>host GO → K → KD</b><span>CRT; separate launch-mailbox wait; kernel_main</span></a>
             <i aria-hidden="true">→</i>
             <a href={sourceLinks.ncriscLoop} className="flow-node done"><small>SHARED SYNC</small><b>DONE</b><span>BRISC waits for all enabled RISCs</span></a>
           </div>
 
           <div className="model-notes">
             <article><span>01</span><h3>Firmware boundary</h3><p>BRISC writes the shared state; Blackhole NCRISC invalidates cached L1 state while polling.</p><a href={sourceLinks.briscLaunch}>Open supervisor code ↗</a></article>
-            <article><span>02</span><h3>Operation boundary</h3><p>NCRISC firmware calls its operation image. The wrapper runs CRT and brackets <code>kernel_main</code> with K/KD.</p><a href={sourceLinks.ncrisck}>Open wrapper code ↗</a></article>
+            <article><span>02</span><h3>Two GO locations</h3><p>DM1 is the BRISC subordinate handshake. The wrapper's <code>wait_for_go_message()</code> reads the separate host/dispatcher GO mailbox before K.</p><a href={sourceLinks.launchGoWait}>Open mailbox wait ↗</a></article>
             <article><span>03</span><h3>Completion boundary</h3><p>NCRISC publishes DONE. A waiting BRISC may still be blocked by another enabled subordinate.</p><a href={sourceLinks.briscLoop}>Open completion wait ↗</a></article>
           </div>
         </section>
@@ -568,7 +572,7 @@ unset TT_METAL_DEVICE_PROFILER
             <header><span>WAYPOINT GLOSSARY</span><p>These short strings are Watcher progress markers, not C++ function names.</p></header>
             <div>{waypointDefinitions.map(([mark, meaning]) => <article key={mark}><code>{mark}</code><p>{meaning}</p></article>)}</div>
           </div>
-          <p className="waypoint-rule"><b>Read the interval, not only the last letter.</b> <code>R</code> without <code>K</code> points to shared GO, operation handoff, image/entry, CRT or ABI. <code>K</code> without <code>KD</code> proves entry and setup completed, so investigate waits, circular buffers, NoC/memory access and generated instructions inside <code>kernel_main</code>.</p>
+          <p className="waypoint-rule"><b>Read the interval, not only the last letter.</b> <code>R</code> without <code>K</code> points to DM1 GO, operation handoff, image/entry, CRT, the separate host-GO mailbox wait or ABI. <code>K</code> without <code>KD</code> proves entry and setup completed, so investigate waits, circular buffers, NoC/memory access and generated instructions inside <code>kernel_main</code>.</p>
         </section>
 
         <section id="observer-tools" className="bringup-section observer-section">

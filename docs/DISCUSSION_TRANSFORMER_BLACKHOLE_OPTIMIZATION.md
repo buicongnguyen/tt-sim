@@ -55,7 +55,8 @@ Fill this before editing a program config or kernel:
 | Field | Required value |
 |---|---|
 | Model/checkpoint and revision | `____________________________` |
-| Blackhole SKU and mesh | `P100 / P150 / P300 / ...`, mesh `____ × ____` |
+| Physical Blackhole SKU/board | `P100 / P150 / P300 / ...` |
+| Demo `MESH_DEVICE` selector and opened mesh | `P150 / P300 / P150x4 / P150x8 / BHGLX`, mesh `____ × ____` |
 | TT-Metal revision | `50a82f835593512c4176546b4af68d7e91315a86` or replacement |
 | Batch/users | `____` |
 | Prompt lengths | p50 `____`, p95 `____`, maximum `____` tokens |
@@ -93,7 +94,7 @@ concrete starting point.
 cd ~/src/tt-metal
 source python_env/bin/activate
 
-export HF_MODEL=meta-llama/Llama-3.1-8B-Instruct
+export HF_MODEL=meta-llama/Llama-3.1-8B
 export MESH_DEVICE=P150
 export TT_CACHE_PATH=$PWD/model_cache
 
@@ -106,9 +107,15 @@ pytest models/tt_transformers/demo/simple_text_demo.py \
   -k "performance and batch-1"
 ```
 
-The exact runnable modes, cache behavior, paging parameters and optimization
-levels are documented in the pinned
-[`models/tt_transformers/README.md`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/models/tt_transformers/README.md).
+The base Llama 3.1 8B checkpoint above is the P150-verified pairing listed in
+the pinned README. The actual demo fixture maps the Blackhole selectors `P150`,
+`P300`, `P150x4`, `P150x8` and `BHGLX` to explicit mesh shapes; do not substitute
+a physical marketing SKU name unless that selector exists in the fixture. The
+exact runnable modes, cache behavior, paging parameters and optimization levels
+are documented in the pinned
+[`models/tt_transformers/README.md`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/models/tt_transformers/README.md),
+and the selector map is in
+[`simple_text_demo.py:845–861`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/models/tt_transformers/demo/simple_text_demo.py#L845-L861).
 Record first-run compilation separately from steady-state execution.
 
 ```mermaid
@@ -334,8 +341,9 @@ new matmul kernel.
 
 ## Step 6 — reduce precision by tensor role, not globally
 
-The current `ttnn.linear` binding accepts BF16, BFP8_B and BFP4_B tile inputs,
-and the matmul validator enforces tile/layout and tiny-tile constraints. See
+The current `ttnn.linear` binding documents BFLOAT16, FLOAT32, BFLOAT8_B and
+BFLOAT4_B tile inputs, and the matmul validator enforces tile/layout and
+tiny-tile constraints. See
 [`matmul_nanobind.cpp:824–898`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/matmul/matmul_nanobind.cpp#L824-L898)
 and
 [`matmul_device_operation.cpp:31–159`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/matmul/device/matmul_device_operation.cpp#L31-L159).

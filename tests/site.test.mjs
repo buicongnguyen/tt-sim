@@ -32,6 +32,10 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("DISCUSSION_BLACKHOLE_SYNCHRONIZATION.md", root));
   await access(new URL("discussion-transformer-blackhole-optimization.html", root));
   await access(new URL("DISCUSSION_TRANSFORMER_BLACKHOLE_OPTIMIZATION.md", root));
+  await access(new URL("discussion-presentation.html", root));
+  await access(new URL("DISCUSSION_PRESENTATION_30_MIN.md", root));
+  await access(new URL("discussion-quantization.html", root));
+  await access(new URL("DISCUSSION_TT_METAL_QUANTIZATION.md", root));
 });
 
 test("publishes the WSL agent and host-to-device trace plan", async () => {
@@ -283,6 +287,8 @@ test("publishes the debugging and optimization discussion workbench", async () =
   assert.match(app, /Filter by discussion track/);
   assert.match(app, /discussion-blackhole-bringup\.html/);
   assert.match(app, /discussion-transformer-blackhole-optimization\.html/);
+  assert.match(app, /discussion-presentation\.html/);
+  assert.match(app, /discussion-quantization\.html/);
   assert.match(app, /Optimize a Transformer on Blackhole/);
   assert.match(app, /Possible destination/);
   assert.match(mainApp, /href="\.\/discussion\.html"/);
@@ -336,6 +342,11 @@ test("publishes the Blackhole BRISC NCRISC bring-up decision chain", async () =>
   assert.match(report, /ELF32.*little-endian.*RISC-V/s);
   assert.match(report, /whole-file `objcopy -O binary`/);
   assert.match(report, /R.*without.*K.*K.*without.*KD/s);
+  assert.match(report, /two GO-bearing locations/i);
+  assert.match(report, /subordinate_sync->dm1/);
+  assert.match(report, /mailboxes->go_messages/);
+  assert.match(app, /script_tng\.ld#L220-L244/);
+  assert.doesNotMatch(app, /script_tng\.ld#L220-L250/);
   assert.match(report, /multicast readback is unsupported/);
   assert.match(report, /## Logic review of the plan/);
   assert.match(report, /## Code review of the plan/);
@@ -372,6 +383,11 @@ test("publishes the Blackhole fence semaphore and hardware-wait field guide", as
   assert.match(styles, /\.waypoint-console/);
   assert.match(report, /fence_compiler\(\).*emits no instruction/s);
   assert.match(report, /TTI_SEMWAIT/);
+  assert.match(report, /16 program-visible slots/);
+  assert.match(report, /16 IDs, `0…15`/);
+  assert.match(report, /eight internal Tensix hardware semaphore IDs/);
+  assert.match(report, /TT_METAL_CHECKPOINT=1/);
+  assert.match(app, /16 IDs · 32-bit/);
   assert.match(report, /software polling/);
   assert.match(report, /noc_async_write_barrier\(\).*noc_semaphore_inc/s);
   assert.match(report, /absence finding/);
@@ -405,7 +421,75 @@ test("publishes the Transformer on Blackhole optimization decision chain", async
   assert.match(report, /MatmulDeviceOperation/);
   assert.match(report, /measurements open/i);
   assert.match(report, /speedup remains intentionally unclaimed/);
+  assert.match(report, /HF_MODEL=meta-llama\/Llama-3\.1-8B\r?\n/);
+  assert.doesNotMatch(report, /HF_MODEL=meta-llama\/Llama-3\.1-8B-Instruct/);
+  assert.match(report, /BFLOAT16, FLOAT32, BFLOAT8_B and/);
   assert.ok((report.match(/```mermaid/g) ?? []).length >= 9);
+  assert.equal(publishedReport, report);
+});
+
+test("publishes a source-backed 30-minute presentation room", async () => {
+  const html = await readFile(new URL("discussion-presentation.html", root), "utf8");
+  const app = await readFile(new URL("../src/PresentationApp.tsx", root), "utf8");
+  const mainApp = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const discussionApp = await readFile(new URL("../src/DiscussionApp.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/presentation.css", root), "utf8");
+  const report = await readFile(new URL("../docs/DISCUSSION_PRESENTATION_30_MIN.md", root), "utf8");
+  const publishedReport = await readFile(new URL("DISCUSSION_PRESENTATION_30_MIN.md", root), "utf8");
+  assert.match(html, /30-minute research presentation/);
+  assert.match(html, /(?:src|href)="\.\/assets\//);
+  assert.match(app, /A talk you can/);
+  assert.match(app, /totalMinutes/);
+  assert.match(app, /PERSONALIZE/);
+  assert.match(app, /Cold firmware initialization and warm operation launch are different flows/);
+  assert.match(app, /subordinate DM1 LOAD\/GO/);
+  assert.match(app, /COPY ALL SLIDES/);
+  assert.match(app, /Why do you say NCRISC does not call BRISC/);
+  assert.match(mainApp, /discussion-presentation\.html/);
+  assert.match(discussionApp, /SUBPAGE 04 · 30-MINUTE PRESENTATION/);
+  assert.match(styles, /\.deck-workbench/);
+  assert.match(styles, /\.boot-pair/);
+  assert.match(report, /\*\*Total\*\* \| \*\*30 min\*\*/);
+  assert.match(report, /The host places separate images/);
+  assert.match(report, /historical compiler root-cause claim/);
+  assert.match(report, /claim → strongest evidence → limitation → next experiment/);
+  assert.match(report, /## Logic review/);
+  assert.match(report, /## Code review/);
+  assert.ok((report.match(/```mermaid/g) ?? []).length >= 7);
+  assert.equal(publishedReport, report);
+});
+
+test("publishes the TTNN and TT-Metal LLM quantization decision guide", async () => {
+  const html = await readFile(new URL("discussion-quantization.html", root), "utf8");
+  const app = await readFile(new URL("../src/QuantizationApp.tsx", root), "utf8");
+  const mainApp = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const discussionApp = await readFile(new URL("../src/DiscussionApp.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/quantization.css", root), "utf8");
+  const report = await readFile(new URL("../docs/DISCUSSION_TT_METAL_QUANTIZATION.md", root), "utf8");
+  const publishedReport = await readFile(new URL("DISCUSSION_TT_METAL_QUANTIZATION.md", root), "utf8");
+  assert.match(html, /LLM quantization on TT-Metal/);
+  assert.match(html, /(?:src|href)="\.\/assets\//);
+  assert.match(app, /Start BF16/);
+  assert.match(app, /An enum is not/);
+  assert.match(app, /1,088 B \/ tile/);
+  assert.match(app, /per-channel UINT8 output is rejected/);
+  assert.match(app, /not a quantized matmul replacement/i);
+  assert.match(app, /MXFP4/);
+  assert.match(app, /DecodersPrecision\.accuracy/);
+  assert.match(mainApp, /discussion-quantization\.html/);
+  assert.match(discussionApp, /SUBPAGE 05 · LLM QUANTIZATION/);
+  assert.match(styles, /\.format-workbench/);
+  assert.match(styles, /\.quant-flow/);
+  assert.match(styles, /\.logic-table/);
+  assert.match(report, /Hardware\/LLK datatype capability/);
+  assert.match(report, /BFLOAT8_B.*BFLOAT4_B/s);
+  assert.match(report, /46\.875% less/);
+  assert.match(report, /71\.875% less/);
+  assert.match(report, /Do \*\*not\*\* start by changing every tensor to INT8/i);
+  assert.match(report, /current generic \[`ttnn\.linear` contract\]/);
+  assert.match(report, /## Logic review/);
+  assert.match(report, /## Code review conclusions/);
+  assert.ok((report.match(/```mermaid/g) ?? []).length >= 5);
   assert.equal(publishedReport, report);
 });
 

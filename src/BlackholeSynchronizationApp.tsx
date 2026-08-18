@@ -228,10 +228,10 @@ function BlackholeSynchronizationApp() {
           <div className="sync-heading"><span>03 / TWO SEMAPHORE FAMILIES</span><h2>Same noun.<br/>Different machine.</h2><p>Both families are fast in their intended scope. They are not interchangeable.</p></div>
           <div className="semaphore-compare">
             <article className="l1-sem">
-              <header><span>PUBLIC / CROSS-CORE</span><b>32-bit</b></header>
+              <header><span>PUBLIC / CROSS-CORE</span><b>16 IDs · 32-bit</b></header>
               <h3>Program L1 semaphore</h3><div className="sem-counter"><i>09</i><em>→</em><i>10</i><small>NoC atomic</small></div>
-              <ul><li>four-byte word in local L1</li><li>receiver RISC polls</li><li>remote sender uses NoC atomic</li><li>prefer monotonic epoch + wait_min</li></ul>
-              <a href={`${sourceRoot}/tt_metal/hw/inc/api/dataflow/dataflow_api.h#L1935-L1969`}>Read wait loop ↗</a>
+              <ul><li>16 program-visible IDs, 0…15</li><li>four-byte word in local L1</li><li>receiver RISC polls</li><li>remote sender uses NoC atomic</li><li>prefer monotonic epoch + wait_min</li></ul>
+              <a href={`${sourceRoot}/tt_metal/impl/buffers/semaphore.hpp#L14-L17`}>Read program limit ↗</a>
             </article>
             <div className="sem-divider"><span>≠</span><small>NOT THE<br/>SAME BANK</small></div>
             <article className="t6-sem">
@@ -277,6 +277,11 @@ export TT_METAL_WRITE_DEBUG_DELAY_CORES=0,0
 export TT_METAL_WRITE_DEBUG_DELAY_RISCVS=BR`}</pre></div>
             <div><span>SEPARATE NoC TIMELINE RUN</span><pre>{`export TT_METAL_DEVICE_PROFILER=1
 export TT_METAL_DEVICE_PROFILER_NOC_EVENTS=1`}</pre></div>
+            <div><span>CONSISTENT CHECKPOINT + DUMP</span><pre>{`export TT_METAL_CHECKPOINT=1
+export TT_METAL_DPRINT_CORES=0,0
+
+# Rebuild JIT kernels after toggling.
+# Every active RISC must call the same checkpoint.`}</pre></div>
           </div>
           <p className="debug-caveat"><b>Do not stack every tool.</b> Watcher first, checkpoint or DPRINT second, profiler in a separate run, and GDB/JTAG only after a core/RISC is localized.</p>
         </section>

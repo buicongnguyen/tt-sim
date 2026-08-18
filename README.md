@@ -39,6 +39,8 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - Blackhole BRISC/NCRISC bring-up decision chain: <https://buicongnguyen.github.io/tt-sim/discussion-blackhole-bringup.html>
 - Blackhole fence, semaphore and hardware-wait field guide: <https://buicongnguyen.github.io/tt-sim/discussion-blackhole-synchronization.html>
 - Transformer on Blackhole optimization chain: <https://buicongnguyen.github.io/tt-sim/discussion-transformer-blackhole-optimization.html>
+- Source-backed 30-minute presentation room: <https://buicongnguyen.github.io/tt-sim/discussion-presentation.html>
+- TTNN/TT-Metal LLM quantization guide: <https://buicongnguyen.github.io/tt-sim/discussion-quantization.html>
 
 ## Repository map
 
@@ -63,6 +65,8 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `docs/DISCUSSION.md` — provisional debugging and optimization questions, experiments and promotion queue
 - `docs/DISCUSSION_TRANSFORMER_BLACKHOLE_OPTIMIZATION.md` — source-backed prefill/decode optimization flow from TTNN model code to TT-Metal kernels
 - `docs/DISCUSSION_BLACKHOLE_SYNCHRONIZATION.md` — compiler/RISC/NoC fence boundaries, two semaphore families, hardware waits and race-debug labs
+- `docs/DISCUSSION_PRESENTATION_30_MIN.md` — copy-ready 30-minute research/achievement deck, boot flows, speaker notes and Q&A bank
+- `docs/DISCUSSION_TT_METAL_QUANTIZATION.md` — source-audited BFP8/BFP4, integer and MX decision guide for LLM inference
 - `scripts/05-architecture-evidence.sh` — reproducible descriptor and architecture-LLK audit
 - `huawei.html` — dedicated Blackhole versus Huawei Ascend Pages route
 - `async-kernels.html` — dedicated asynchronous-kernel and matrix-granularity Pages route
@@ -71,6 +75,8 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `discussion-blackhole-bringup.html` — source-backed BRISC/NCRISC bring-up and compiler root-cause decision chain
 - `discussion-blackhole-synchronization.html` — interactive Blackhole synchronization contract selector and Watcher waypoint decoder
 - `discussion-transformer-blackhole-optimization.html` — interactive Transformer-on-Blackhole optimization decision chain and measurement ledger
+- `discussion-presentation.html` — interactive presentation room with per-slide copy controls and source-backed boot diagrams
+- `discussion-quantization.html` — interactive datatype ledger, model precision flow and copyable quantization experiments
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope

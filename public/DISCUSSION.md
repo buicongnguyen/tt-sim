@@ -216,6 +216,34 @@ that visible.
 - **Possible destination:** a maintained Transformer optimization chapter after
   the hardware evidence gates pass.
 
+### OPT-07 — Apply quantization and mixed precision to an LLM
+
+- **Status:** `EVIDENCE`
+- **Detailed Q&A:** [Discussion subpage 05 — TTNN/TT-Metal LLM
+  quantization](./DISCUSSION_TT_METAL_QUANTIZATION.md)
+- **Question:** Which public and low-level datatypes form a supported,
+  measurable LLM path on the pinned TTNN/TT-Metal source?
+- **Hypothesis:** The practical generic path is BF16 baseline → BFP8 by tensor
+  role → selective BFP4, while INT8, FP8_E4M3 and MX claims require narrower
+  operation/architecture proof.
+- **Correctness gate:** layer tensors, logits/tokens and perplexity/task quality
+  remain within a predeclared budget.
+- **Evidence available:** datatype enum, tile sizes, linear contract,
+  quantize/requantize/dequantize validators, TT-Transformers precision policy
+  and Blackhole LLK integer path pinned to `tt-metal@50a82f8…`.
+- **Next experiment:** run the accuracy/performance presets and isolate one
+  decoder's FF1/FF3 BFP4 change.
+- **Possible destination:** a maintained quantization and mixed-precision
+  chapter after real Blackhole quality/performance measurements are filled.
+
+## Presentation room
+
+The [30-minute research and achievement presentation](./DISCUSSION_PRESENTATION_30_MIN.md)
+compresses the bring-up and Transformer studies into copy-ready slides, speaker
+notes, two small boot/launch diagrams and a technical question bank. Its
+`VERIFIED`, `PERSONALIZE` and `MEASURE` labels prevent source facts from being
+mixed with unsupported personal or performance claims.
+
 ## Promotion queue
 
 No item is automatically promoted. During review, ask:
