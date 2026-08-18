@@ -20,10 +20,12 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("BLACKHOLE_VS_HUAWEI_ASCEND.md", root));
   await access(new URL("ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md", root));
   await access(new URL("CONTRIBUTION_ROADMAP.md", root));
+  await access(new URL("DISCUSSION.md", root));
   await access(new URL("RISC_FIRMWARE_TO_KERNEL_FLOW.md", root));
   await access(new URL("huawei.html", root));
   await access(new URL("async-kernels.html", root));
   await access(new URL("firmware-flow.html", root));
+  await access(new URL("discussion.html", root));
 });
 
 test("publishes the WSL agent and host-to-device trace plan", async () => {
@@ -257,6 +259,31 @@ test("publishes the host-to-RISC firmware and operation-kernel flow", async () =
   assert.match(report, /\[R5\] Send GO/);
   assert.ok((report.match(/```mermaid/g) ?? []).length >= 10);
   assert.equal(publishedReport, report);
+});
+
+test("publishes the debugging and optimization discussion workbench", async () => {
+  const html = await readFile(new URL("discussion.html", root), "utf8");
+  const app = await readFile(new URL("../src/DiscussionApp.tsx", root), "utf8");
+  const mainApp = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/discussion.css", root), "utf8");
+  const guide = await readFile(new URL("../docs/DISCUSSION.md", root), "utf8");
+  const publishedGuide = await readFile(new URL("DISCUSSION.md", root), "utf8");
+  assert.match(html, /Discussion workbench/);
+  assert.match(html, /(?:src|href)="\.\/assets\//);
+  assert.match(app, /Loose notes now/);
+  assert.match(app, /const topics/);
+  assert.match(app, /Build a host-to-device stack trace recipe/);
+  assert.match(app, /Measure cold versus warm Program traffic/);
+  assert.match(app, /Filter by discussion track/);
+  assert.match(app, /Possible destination/);
+  assert.match(mainApp, /href="\.\/discussion\.html"/);
+  assert.match(styles, /\.topic-controls/);
+  assert.match(styles, /\.promotion-path/);
+  assert.match(guide, /## Debugging queue/);
+  assert.match(guide, /## Optimization queue/);
+  assert.match(guide, /## New-item template/);
+  assert.match(guide, /question → reproducible observation → source evidence → conclusion → chapter/);
+  assert.equal(publishedGuide, guide);
 });
 
 test("provides a book-style chapter sidebar", async () => {

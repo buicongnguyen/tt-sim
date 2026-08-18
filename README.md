@@ -35,6 +35,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - Async kernels and matrix granularity: <https://buicongnguyen.github.io/tt-sim/async-kernels.html>
 - Host-to-RISC firmware and operation-kernel flow: <https://buicongnguyen.github.io/tt-sim/firmware-flow.html>
 - Kernel/compiler contribution roadmap: <https://buicongnguyen.github.io/tt-sim/#contribute>
+- Debugging and optimization discussion workbench: <https://buicongnguyen.github.io/tt-sim/discussion.html>
 
 ## Repository map
 
@@ -56,10 +57,12 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `docs/ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md` — NoC/CB/register synchronization, LLK MVMUL geometry and Huawei equivalents
 - `docs/RISC_FIRMWARE_TO_KERNEL_FLOW.md` — source-linked BRISC/NCRISC/TRISC build, boot, dispatch and warm-launch analysis
 - `docs/CONTRIBUTION_ROADMAP.md` — hardware-free low-level kernel, TT-MLIR, upstream contribution and bounty strategy
+- `docs/DISCUSSION.md` — provisional debugging and optimization questions, experiments and promotion queue
 - `scripts/05-architecture-evidence.sh` — reproducible descriptor and architecture-LLK audit
 - `huawei.html` — dedicated Blackhole versus Huawei Ascend Pages route
 - `async-kernels.html` — dedicated asynchronous-kernel and matrix-granularity Pages route
 - `firmware-flow.html` — dedicated host-to-RISC firmware and operation-kernel Pages route
+- `discussion.html` — filterable provisional discussion and chapter-promotion workbench
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope

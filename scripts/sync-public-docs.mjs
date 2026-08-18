@@ -10,6 +10,7 @@ const documents = [
   "ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md",
   "RISC_FIRMWARE_TO_KERNEL_FLOW.md",
   "CONTRIBUTION_ROADMAP.md",
+  "DISCUSSION.md",
 ];
 
 await mkdir(new URL("../public/", import.meta.url), { recursive: true });
