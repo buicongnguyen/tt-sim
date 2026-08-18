@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 
 type Evidence = "VERIFIED" | "PERSONALIZE" | "MEASURE";
 
+type ReferenceLink = { label: string; href: string };
+
 type Slide = {
   id: string;
   minutes: number;
@@ -11,11 +13,17 @@ type Slide = {
   bullets: readonly string[];
   speakerNote: string;
   evidence: Evidence;
-  source?: { label: string; href: string };
+  sources: readonly ReferenceLink[];
 };
 
 const revision = "50a82f835593512c4176546b4af68d7e91315a86";
 const sourceRoot = `https://github.com/tenstorrent/tt-metal/blob/${revision}`;
+const officialDocs = {
+  gettingStarted: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/get_started/get_started.html",
+  tools: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html",
+  computeDataflow: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/compute_engines_and_dataflow_within_tensix.html",
+  linear: "https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/api/ttnn.linear.html",
+} as const;
 
 const slides: readonly Slide[] = [
   {
@@ -31,6 +39,9 @@ const slides: readonly Slide[] = [
     ],
     speakerNote: "Keep this to identity, technical scope and the promise of the talk. If the panel already knows you, skip it and move the minute to Q&A.",
     evidence: "PERSONALIZE",
+    sources: [
+      { label: "TT-Metalium stack overview", href: officialDocs.gettingStarted },
+    ],
   },
   {
     id: "S02",
@@ -45,7 +56,10 @@ const slides: readonly Slide[] = [
     ],
     speakerNote: "State the research method first. It gives the audience a map for every later technical detail.",
     evidence: "VERIFIED",
-    source: { label: "Host-to-RISC guide", href: "./firmware-flow.html" },
+    sources: [
+      { label: "Host-to-RISC guide", href: "./firmware-flow.html" },
+      { label: "TT-Metalium programming model", href: officialDocs.gettingStarted },
+    ],
   },
   {
     id: "S03",
@@ -60,7 +74,11 @@ const slides: readonly Slide[] = [
     ],
     speakerNote: "Do not describe NCRISC as forwarding firmware to BRISC. The host places the images; BRISC is the coordinating firmware on the Tensix core.",
     evidence: "VERIFIED",
-    source: { label: "Firmware initializer", href: `${sourceRoot}/tt_metal/impl/device/firmware/risc_firmware_initializer.cpp#L1143-L1199` },
+    sources: [
+      { label: "Firmware initializer", href: `${sourceRoot}/tt_metal/impl/device/firmware/risc_firmware_initializer.cpp#L1143-L1199` },
+      { label: "BRISC release sequence", href: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L181-L275` },
+      { label: "Operation dispatch", href: `${sourceRoot}/tt_metal/impl/program/dispatch.cpp#L2355-L2422` },
+    ],
   },
   {
     id: "S04",
@@ -75,7 +93,10 @@ const slides: readonly Slide[] = [
     ],
     speakerNote: "Use STAR language. If this is your historical project, replace the generic symptom with the exact test, board revision, compiler build and first failing waypoint.",
     evidence: "PERSONALIZE",
-    source: { label: "Bring-up case", href: "./discussion-blackhole-bringup.html" },
+    sources: [
+      { label: "Bring-up case and decision tree", href: "./discussion-blackhole-bringup.html" },
+      { label: "Official debugging tools index", href: officialDocs.tools },
+    ],
   },
   {
     id: "S05",
@@ -91,7 +112,11 @@ const slides: readonly Slide[] = [
     ],
     speakerNote: "The strength of the method is the stop condition at every rung. Each experiment must eliminate a class of causes, not merely add more logs.",
     evidence: "VERIFIED",
-    source: { label: "BRISC operation flow", href: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L439-L488` },
+    sources: [
+      { label: "BRISC operation flow", href: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L439-L488` },
+      { label: "NCRISC operation flow", href: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/ncrisc.cc#L77-L192` },
+      { label: "Watcher, DPRINT, Tracy and profiler", href: officialDocs.tools },
+    ],
   },
   {
     id: "S06",
@@ -106,7 +131,11 @@ const slides: readonly Slide[] = [
     ],
     speakerNote: "Current repository evidence does not prove the historical third-party compiler root cause. Present that claim only after inserting your old/new binaries, compiler hashes, disassembly delta and regression result.",
     evidence: "PERSONALIZE",
-    source: { label: "NCRISC wait and entry", href: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/ncrisc.cc#L77-L192` },
+    sources: [
+      { label: "NCRISC wait and entry", href: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/ncrisc.cc#L77-L192` },
+      { label: "Operation wrapper and kernel_main", href: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc#L38-L95` },
+      { label: "Evidence bundle checklist", href: "./DISCUSSION_BLACKHOLE_BRINGUP.md" },
+    ],
   },
   {
     id: "S07",
@@ -121,7 +150,10 @@ const slides: readonly Slide[] = [
     ],
     speakerNote: "Name one real model, Blackhole SKU/mesh, prompt distribution and quality threshold here. Otherwise the result cannot be reproduced.",
     evidence: "PERSONALIZE",
-    source: { label: "Optimization chain", href: "./discussion-transformer-blackhole-optimization.html" },
+    sources: [
+      { label: "Transformer optimization chain", href: "./discussion-transformer-blackhole-optimization.html" },
+      { label: "TTNN linear contract", href: officialDocs.linear },
+    ],
   },
   {
     id: "S08",
@@ -137,7 +169,11 @@ const slides: readonly Slide[] = [
     ],
     speakerNote: "Explain one rejected branch. A good optimization story includes why a tempting change was not the highest-leverage or safest intervention.",
     evidence: "VERIFIED",
-    source: { label: "Precision policy", href: `${sourceRoot}/models/tt_transformers/tt/model_config.py#L128-L237` },
+    sources: [
+      { label: "TT-Transformers precision policy", href: `${sourceRoot}/models/tt_transformers/tt/model_config.py#L128-L237` },
+      { label: "Tensix compute dataflow", href: officialDocs.computeDataflow },
+      { label: "Profiler and debugging tools", href: officialDocs.tools },
+    ],
   },
   {
     id: "S09",
@@ -153,7 +189,11 @@ const slides: readonly Slide[] = [
     ],
     speakerNote: "The repository intentionally leaves performance cells open. Replace every bracketed field with a run ID and exact configuration before presenting this as a completed speedup.",
     evidence: "MEASURE",
-    source: { label: "Quantization decision page", href: "./discussion-quantization.html" },
+    sources: [
+      { label: "Quantization decision page", href: "./discussion-quantization.html" },
+      { label: "Device profiler reference", href: officialDocs.tools },
+      { label: "BFP tile storage constants", href: `${sourceRoot}/tt_metal/api/tt-metalium/constants.hpp#L13-L21` },
+    ],
   },
   {
     id: "S10",
@@ -168,6 +208,10 @@ const slides: readonly Slide[] = [
     ],
     speakerNote: "End with the engineering value, not a list of tools. Then invite questions at the layer the interviewer cares about.",
     evidence: "PERSONALIZE",
+    sources: [
+      { label: "TT-Metalium stack and workflow", href: officialDocs.gettingStarted },
+      { label: "Full presentation evidence note", href: "./DISCUSSION_PRESENTATION_30_MIN.md" },
+    ],
   },
   {
     id: "S11",
@@ -182,18 +226,23 @@ const slides: readonly Slide[] = [
     ],
     speakerNote: "If self-introduction is skipped, use four minutes here. Keep each first answer under 45 seconds, then offer the deeper source path.",
     evidence: "VERIFIED",
+    sources: [
+      { label: "Firmware flow references", href: "./firmware-flow.html" },
+      { label: "Official tools reference", href: officialDocs.tools },
+      { label: "Official ttnn.linear reference", href: officialDocs.linear },
+    ],
   },
 ] as const;
 
 const questions = [
-  ["Why do you say NCRISC does not call BRISC?", "They are independent RISC firmware loops. BRISC writes the shared subordinate DM1 LOAD/GO state; NCRISC polls it, prepares its operation kernel, executes it and writes DONE."],
-  ["What does R without K mean?", "R is a firmware waypoint before the operation wrapper. If K is absent, inspect the launch-level GO, entry PC/ELF and wrapper prologue. K without KD moves the search inside kernel_main or its waits."],
-  ["How would you prove a compiler root cause?", "Hold source, preprocessed input, linker script, runtime and device constant; change only compiler build. Compare ELF headers, disassembly and delivered bytes, then show the first runtime divergence and a regression pass after the fix."],
-  ["Why not start with DPRINT everywhere?", "Watcher classifies the stalled RISC cheaply. DPRINT perturbs timing and can block. Add a small DPRINT only after the failing interval is known; use Tracy for timing and JTAG/GDB only when supported and necessary."],
-  ["Why separate cold boot from operation launch?", "Cold boot installs persistent firmware and initializes cores. Operation launch delivers per-program binaries/configuration and a launch message. Mixing them leads to incorrect ownership and timing assumptions."],
-  ["Why is BFP8 common instead of INT8 for the LLM path?", "The pinned TTNN linear contract directly supports BF16, BFP8_B, BFP4_B and FP32 tile tensors. INT8 exists lower in the stack, but generic linear does not expose it as a supported input contract."],
-  ["What is the biggest quantization risk?", "Applying one dtype globally. Attention, KV cache, residual paths, MLP weights and accumulations have different error sensitivity, so the sweep and rollback unit must be a tensor role."],
-  ["How do you know a speedup is real?", "Same model, inputs, mesh, software revision, warm-up and quality gate; one changed variable; repeated warm measurements; and a profiler signature that explains the delta."],
+  ["Why do you say NCRISC does not call BRISC?", "They are independent RISC firmware loops. BRISC writes the shared subordinate DM1 LOAD/GO state; NCRISC polls it, prepares its operation kernel, executes it and writes DONE.", { label: "BRISC/NCRISC handshake", href: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L439-L488` }],
+  ["What does R without K mean?", "R is a firmware waypoint before the operation wrapper. If K is absent, inspect the launch-level GO, entry PC/ELF and wrapper prologue. K without KD moves the search inside kernel_main or its waits.", { label: "NCRISC wrapper entry", href: `${sourceRoot}/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc#L38-L95` }],
+  ["How would you prove a compiler root cause?", "Hold source, preprocessed input, linker script, runtime and device constant; change only compiler build. Compare ELF headers, disassembly and delivered bytes, then show the first runtime divergence and a regression pass after the fix.", { label: "Compiler A/B evidence plan", href: "./discussion-blackhole-bringup.html" }],
+  ["Why not start with DPRINT everywhere?", "Watcher classifies the stalled RISC cheaply. DPRINT perturbs timing and can block. Add a small DPRINT only after the failing interval is known; use Tracy for timing and JTAG/GDB only when supported and necessary.", { label: "Official debugging tools", href: officialDocs.tools }],
+  ["Why separate cold boot from operation launch?", "Cold boot installs persistent firmware and initializes cores. Operation launch delivers per-program binaries/configuration and a launch message. Mixing them leads to incorrect ownership and timing assumptions.", { label: "Host-to-RISC flow", href: "./firmware-flow.html" }],
+  ["Why is BFP8 common instead of INT8 for the LLM path?", "The pinned TTNN linear contract directly supports BF16, BFP8_B, BFP4_B and FP32 tile tensors. INT8 exists lower in the stack, but generic linear does not expose it as a supported input contract.", { label: "Official ttnn.linear contract", href: officialDocs.linear }],
+  ["What is the biggest quantization risk?", "Applying one dtype globally. Attention, KV cache, residual paths, MLP weights and accumulations have different error sensitivity, so the sweep and rollback unit must be a tensor role.", { label: "Per-role precision policy", href: `${sourceRoot}/models/tt_transformers/tt/model_config.py#L128-L237` }],
+  ["How do you know a speedup is real?", "Same model, inputs, mesh, software revision, warm-up and quality gate; one changed variable; repeated warm measurements; and a profiler signature that explains the delta.", { label: "Device profiler reference", href: officialDocs.tools }],
 ] as const;
 
 function formatSlide(slide: Slide) {
@@ -205,7 +254,8 @@ function formatSlide(slide: Slide) {
     "",
     `Speaker note: ${slide.speakerNote}`,
     `Evidence status: ${slide.evidence}`,
-    slide.source ? `Source: ${slide.source.href}` : "",
+    "Backup / references:",
+    ...slide.sources.map((source) => `- ${source.label}: ${source.href}`),
   ].filter(Boolean).join("\n");
 }
 
@@ -250,7 +300,8 @@ function PresentationApp() {
               <h4>{active.headline}</h4>
               <ul>{active.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ul>
               <div className="deck-speaker"><b>SPEAKER NOTE</b><p>{active.speakerNote}</p></div>
-              <footer>{active.source && <a href={active.source.href}>Open supporting source ↗</a>}<button type="button" onClick={() => copy(formatSlide(active), active.id)}>{copied === active.id ? "COPIED" : "COPY SLIDE"}</button></footer>
+              <div className="deck-sources"><b>BACKUP / REFERENCES</b><div>{active.sources.map((source) => <a key={source.href} href={source.href}>{source.label} ↗</a>)}</div></div>
+              <footer><span>{active.sources.length} linked reference{active.sources.length === 1 ? "" : "s"}</span><button type="button" onClick={() => copy(formatSlide(active), active.id)}>{copied === active.id ? "COPIED" : "COPY SLIDE"}</button></footer>
             </article>
           </div>
           <button className="copy-all" type="button" onClick={() => copy(slides.map(formatSlide).join("\n\n---\n\n"), "ALL")}>{copied === "ALL" ? "DECK COPIED" : "COPY ALL SLIDES + NOTES"}</button>
@@ -267,7 +318,7 @@ function PresentationApp() {
 
         <section id="questions" className="question-section-deck">
           <div className="deck-heading"><span>03 / QUESTION BANK</span><h2>Short first answer.<br/>Deep proof ready.</h2><p>Lead with the conclusion, cite the boundary that proves it, state the limitation, and offer the next experiment.</p></div>
-          <div className="question-grid-deck">{questions.map(([question, answer], index) => <article key={question}><span>Q{String(index + 1).padStart(2, "0")}</span><h3>{question}</h3><p>{answer}</p></article>)}</div>
+          <div className="question-grid-deck">{questions.map(([question, answer, source], index) => <article key={question}><span>Q{String(index + 1).padStart(2, "0")}</span><h3>{question}</h3><p>{answer}</p><a href={source.href}>{source.label} ↗</a></article>)}</div>
         </section>
 
         <section id="review" className="review-section-deck">

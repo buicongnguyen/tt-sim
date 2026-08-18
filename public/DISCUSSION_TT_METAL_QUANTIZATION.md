@@ -28,6 +28,27 @@ The correct conclusion is not “Tenstorrent has no INT8 hardware.” It is:
 > quantization utility and a supported end-to-end LLM matmul path are four
 > different contracts.
 
+## Claim-to-reference map
+
+The interactive page places these references beside the specific item they
+support. Pinned GitHub links establish the audited implementation at
+`50a82f8…`; official documentation links establish the current public API or
+programming description.
+
+| Page item | What backs it up |
+|---|---|
+| Generic `ttnn.linear` accepts BF16/BFP8/BFP4/FP32 tile inputs, not INT8 | [official `ttnn.linear` dtype table](https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/api/ttnn.linear.html), [pinned binding](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/matmul/matmul_nanobind.cpp#L824-L898) |
+| BFP8 shares exponent information and has dynamic-range limitations | [official Tensor/BFLOAT8_B note](https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/tensor.html), [pinned tensor documentation](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/docs/source/ttnn/ttnn/tensor.rst#L149-L167) |
+| BFP tile byte counts include exponent overhead | [`constants.hpp:13–21`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/api/tt-metalium/constants.hpp#L13-L21) |
+| Unpacker/packer hardware bridges compact SRAM format and compute registers | [official Tensix compute-dataflow documentation](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/compute_engines_and_dataflow_within_tensix.html), [pinned documentation](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/docs/source/tt-metalium/tt_metal/advanced_topics/compute_engines_and_dataflow_within_tensix.rst#L45-L63) |
+| TT-Transformers applies precision by tensor group and offers accuracy/performance policies | [`model_config.py:67–80`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/models/tt_transformers/tt/model_config.py#L67-L80), [`model_config.py:128–237`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/models/tt_transformers/tt/model_config.py#L128-L237) |
+| Per-decoder precision is the control surface for a one-layer sweep | [`model_config.py:4520–4598`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/models/tt_transformers/tt/model_config.py#L4520-L4598) |
+| `quantize`, `requantize` and `dequantize` are utility contracts, not proof of INT8 matmul | [`quantization.cpp:179–204`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/eltwise/quantization/quantization.cpp#L179-L204), [`quantization.cpp:317–341`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/eltwise/quantization/quantization.cpp#L317-L341), [`quantization.cpp:468–485`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/eltwise/quantization/quantization.cpp#L468-L485) |
+| `to_dtype` is a host conversion and does not establish a generic device INT8 linear path | [official `ttnn.to_dtype`](https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/api/ttnn.to_dtype.html), [pinned binding/limitation](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn-nanobind/operations/core.cpp#L239-L269) |
+| Blackhole LLK contains real INT8 configuration machinery | [`ckernel_defs.h:279–284`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/tt-llk/tt_llk_blackhole/common/inc/ckernel_defs.h#L279-L284), [`llk_math_common.h:33–56`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/tt-llk/tt_llk_blackhole/llk_lib/llk_math_common.h#L33-L56) |
+| MXFP4 remains a low-level, architecture-specific experiment in this source | [`tile.cpp:70–100`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/data_format/tile.cpp#L70-L100), [Quasar/DFB MXFP4 test](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tests/tt_metal/tt_metal/llk/test_mxfp4_typecast.cpp#L31-L192), [`DataFormat` legality warning](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/api/tt-metalium/tt_backend_api_types.hpp#L18-L56) |
+| A performance claim requires device/host profiling rather than byte-count inference | [official Metalium tools index](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html) |
+
 ## Three meanings of quantization
 
 | Meaning | Mechanism | Current practical use |

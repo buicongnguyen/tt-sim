@@ -52,6 +52,27 @@ personal achievement claim.
 If self-introduction is skipped, reserve four minutes for Q&A. Rehearse the
 content to finish the non-Q&A slides in 26–27 minutes.
 
+## Slide-to-source map — keep this as a backup slide
+
+Every slide in the interactive page exposes these links beside the speaker
+note. Pinned code proves behavior at the audited revision; the official
+Tenstorrent documentation provides the public programming contract. A link does
+not turn a **PERSONALIZE** or **MEASURE** placeholder into a personal result.
+
+| Slide | Claim or purpose | Backup / references |
+|---|---|---|
+| S01 | TT-Metalium sits below TTNN and exposes low-level kernel/runtime control | [TT-Metalium Getting Started and software-stack overview](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/get_started/get_started.html) |
+| S02 | Follow an operation from model/runtime down to firmware and kernels | [Host-to-RISC guide](https://buicongnguyen.github.io/tt-sim/firmware-flow.html), [Metalium programming model](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/get_started/get_started.html) |
+| S03 | Cold firmware initialization and per-operation launch are distinct | [`risc_firmware_initializer.cpp:1143–1199`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/device/firmware/risc_firmware_initializer.cpp#L1143-L1199), [`brisc.cc:181–275`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L181-L275), [`dispatch.cpp:2355–2422`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/program/dispatch.cpp#L2355-L2422) |
+| S04 | Bring-up situation/task and the first-broken-boundary method | [Blackhole bring-up decision chain](https://buicongnguyen.github.io/tt-sim/discussion-blackhole-bringup.html), [official Metalium tools index](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html) |
+| S05 | DM0/DM1 isolation, LOAD/GO state and targeted debug tools | [`brisc.cc:439–488`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L439-L488), [`ncrisc.cc:77–192`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/ncrisc.cc#L77-L192), [Watcher/DPRINT/Tracy/profiler documentation](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html) |
+| S06 | Distinguish firmware waypoint, wrapper entry and `kernel_main()` return | [`ncrisc.cc:77–192`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/ncrisc.cc#L77-L192), [`ncrisck.cc:38–95`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc#L38-L95) |
+| S07 | Transformer optimization needs a fixed workload and operation contract | [Transformer optimization chain](https://buicongnguyen.github.io/tt-sim/discussion-transformer-blackhole-optimization.html), [official `ttnn.linear`](https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/api/ttnn.linear.html) |
+| S08 | Route from warm profile to layout/program/kernel work and apply precision by role | [`model_config.py:128–237`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/models/tt_transformers/tt/model_config.py#L128-L237), [Tensix compute dataflow](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/compute_engines_and_dataflow_within_tensix.html), [profiler tools](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html) |
+| S09 | Storage reduction needs a measured quality/performance result | [`constants.hpp:13–21`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/api/tt-metalium/constants.hpp#L13-L21), [quantization decision page](https://buicongnguyen.github.io/tt-sim/discussion-quantization.html), [device profiler reference](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html) |
+| S10 | Cross-layer contribution summary | [TT-Metalium stack/workflow](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/get_started/get_started.html); personal ownership still requires the speaker's artifacts |
+| S11 | Q&A answers route to code contracts rather than memory | [host-to-RISC flow](https://buicongnguyen.github.io/tt-sim/firmware-flow.html), [official tools](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html), [official `ttnn.linear`](https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/api/ttnn.linear.html) |
+
 ---
 
 ## S01 — Self-introduction — optional

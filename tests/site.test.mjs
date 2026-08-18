@@ -445,6 +445,10 @@ test("publishes a source-backed 30-minute presentation room", async () => {
   assert.match(app, /subordinate DM1 LOAD\/GO/);
   assert.match(app, /COPY ALL SLIDES/);
   assert.match(app, /Why do you say NCRISC does not call BRISC/);
+  assert.match(app, /BACKUP \/ REFERENCES/);
+  assert.match(app, /docs\.tenstorrent\.com\/tt-metal\/latest/);
+  assert.match(app, /active\.sources\.map/);
+  assert.match(app, /Official ttnn\.linear contract/);
   assert.match(mainApp, /discussion-presentation\.html/);
   assert.match(discussionApp, /SUBPAGE 04 · 30-MINUTE PRESENTATION/);
   assert.match(styles, /\.deck-workbench/);
@@ -455,6 +459,8 @@ test("publishes a source-backed 30-minute presentation room", async () => {
   assert.match(report, /claim → strongest evidence → limitation → next experiment/);
   assert.match(report, /## Logic review/);
   assert.match(report, /## Code review/);
+  assert.match(report, /## Slide-to-source map/);
+  assert.match(report, /official Metalium tools index/i);
   assert.ok((report.match(/```mermaid/g) ?? []).length >= 7);
   assert.equal(publishedReport, report);
 });
@@ -476,6 +482,9 @@ test("publishes the TTNN and TT-Metal LLM quantization decision guide", async ()
   assert.match(app, /not a quantized matmul replacement/i);
   assert.match(app, /MXFP4/);
   assert.match(app, /DecodersPrecision\.accuracy/);
+  assert.match(app, /format-references/);
+  assert.match(app, /Official linear dtype table/);
+  assert.match(app, /Quasar\/DFB MXFP4 test/);
   assert.match(mainApp, /discussion-quantization\.html/);
   assert.match(discussionApp, /SUBPAGE 05 · LLM QUANTIZATION/);
   assert.match(styles, /\.format-workbench/);
@@ -489,6 +498,8 @@ test("publishes the TTNN and TT-Metal LLM quantization decision guide", async ()
   assert.match(report, /current generic \[`ttnn\.linear` contract\]/);
   assert.match(report, /## Logic review/);
   assert.match(report, /## Code review conclusions/);
+  assert.match(report, /## Claim-to-reference map/);
+  assert.match(report, /official Tensix compute-dataflow documentation/);
   assert.ok((report.match(/```mermaid/g) ?? []).length >= 5);
   assert.equal(publishedReport, report);
 });
