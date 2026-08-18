@@ -2,6 +2,8 @@
 
 Started: **18 August 2026**
 
+Updated: **19 August 2026**
+
 This is the provisional inbox for debugging and optimization discussions. It
 is intentionally less polished than the book chapters. An item may begin as a
 question or hypothesis, but it must not be presented elsewhere as a verified
@@ -172,6 +174,28 @@ that visible.
 - **Evidence needed:** Supported target matrix, conversion cost, memory traffic
   and numerical error.
 - **Possible destination:** a future data-format chapter.
+
+### OPT-06 — Optimize a Transformer on Blackhole
+
+- **Status:** `EXPERIMENT`
+- **Detailed Q&A:** [Discussion chain 02 — Transformer on Blackhole
+  optimization](./DISCUSSION_TRANSFORMER_BLACKHOLE_OPTIMIZATION.md)
+- **Question:** How do prefill and decode optimization decisions flow from the
+  TTNN model through device operations into TT-Metal kernels?
+- **Hypothesis:** Separating modes, stabilizing shapes/layouts and profiling the
+  warm path will expose a smaller useful tuning surface than rewriting kernels
+  first.
+- **Correctness gate:** One-block PCC plus end-to-end token/perplexity criteria
+  defined before the performance sweep.
+- **Evidence available:** Model, attention, MLP, matmul and SDPA paths pinned to
+  `tt-metal@50a82f835593512c4176546b4af68d7e91315a86`; logic and code reviews are
+  included in the detailed page.
+- **Evidence still needed:** Exact checkpoint, Blackhole SKU/mesh, shape
+  distribution, warm profiler reports and completed before/after ledger.
+- **Next experiment:** Fill the model contract, run accuracy and warm
+  performance baselines, then profile prefill and decode separately.
+- **Possible destination:** a maintained Transformer optimization chapter after
+  the hardware evidence gates pass.
 
 ## Promotion queue
 

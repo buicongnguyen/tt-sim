@@ -119,6 +119,18 @@ const topics: readonly DiscussionTopic[] = [
     next: "Define a correctness threshold before comparing one representative layer.",
     destination: "Future data-format chapter",
   },
+  {
+    id: "OPT-06",
+    track: "optimization",
+    status: "experiment",
+    title: "Optimize a Transformer on Blackhole",
+    question: "How do prefill and decode decisions flow from the TTNN model into TT-Metal kernels?",
+    hypothesis: "Separating modes, stabilizing layouts and profiling each source layer will expose a smaller useful tuning surface than rewriting kernels first.",
+    evidence: "Pinned TT-Transformers, matmul and SDPA paths plus an unfilled hardware measurement ledger.",
+    next: "Fill the model contract, run accuracy and warm performance baselines, then profile prefill and decode separately.",
+    destination: "Transformer optimization chapter",
+    page: "./discussion-transformer-blackhole-optimization.html",
+  },
 ];
 
 const lifecycle = [
@@ -171,7 +183,7 @@ function DiscussionApp() {
 
       <main>
         <section className="discussion-hero">
-          <div className="discussion-hero-meta"><span>WORKBENCH / 01</span><small>PROVISIONAL · 18 AUG 2026</small></div>
+          <div className="discussion-hero-meta"><span>WORKBENCH / 01</span><small>PROVISIONAL · 19 AUG 2026</small></div>
           <div className="discussion-hero-copy">
             <p>DEBUGGING × OPTIMIZATION × OPEN QUESTIONS</p>
             <h1>Loose notes now.<br/><em>Chapters later.</em></h1>
@@ -192,7 +204,10 @@ function DiscussionApp() {
 
         <section id="topics" className="discussion-section topics-section">
           <div className="discussion-heading inverse"><span>01 / DISCUSSION QUEUE</span><h2>Filter the questions.<br/>Keep the context.</h2><p>Debugging asks where and why execution failed. Optimization asks what can change while correctness remains intact.</p></div>
-          <a className="case-chain" href="./discussion-blackhole-bringup.html"><span>CASE CHAIN 01 · BLACKHOLE BRING-UP</span><h3>Prove the BRISC/NCRISC boundary before blaming the compiler.</h3><p>Eight decisions connect Watcher waypoints, binary readback, operation entry, compiler A/B and regression closure.</p><i>Open detailed Q&amp;A →</i></a>
+          <div className="case-chain-list">
+            <a className="case-chain" href="./discussion-blackhole-bringup.html"><span>CASE CHAIN 01 · BLACKHOLE BRING-UP</span><h3>Prove the BRISC/NCRISC boundary before blaming the compiler.</h3><p>Eight decisions connect Watcher waypoints, binary readback, operation entry, compiler A/B and regression closure.</p><i>Open detailed Q&amp;A →</i></a>
+            <a className="case-chain transformer" href="./discussion-transformer-blackhole-optimization.html"><span>CASE CHAIN 02 · TRANSFORMER OPTIMIZATION</span><h3>Optimize the path, not the model name.</h3><p>Split prefill and decode, follow TTNN into TT-Metal, and keep every speed claim behind a quality gate.</p><i>Open detailed Q&amp;A →</i></a>
+          </div>
           <div className="topic-controls">
             <div className="filter-group" role="group" aria-label="Filter by discussion track">
               {(["all", "debugging", "optimization"] as const).map((value) => <button key={value} type="button" className={track === value ? "active" : ""} aria-pressed={track === value} onClick={() => setTrack(value)}>{value}</button>)}

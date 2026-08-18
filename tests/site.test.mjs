@@ -28,6 +28,8 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("discussion.html", root));
   await access(new URL("discussion-blackhole-bringup.html", root));
   await access(new URL("DISCUSSION_BLACKHOLE_BRINGUP.md", root));
+  await access(new URL("discussion-transformer-blackhole-optimization.html", root));
+  await access(new URL("DISCUSSION_TRANSFORMER_BLACKHOLE_OPTIMIZATION.md", root));
 });
 
 test("publishes the WSL agent and host-to-device trace plan", async () => {
@@ -278,6 +280,8 @@ test("publishes the debugging and optimization discussion workbench", async () =
   assert.match(app, /Measure cold versus warm Program traffic/);
   assert.match(app, /Filter by discussion track/);
   assert.match(app, /discussion-blackhole-bringup\.html/);
+  assert.match(app, /discussion-transformer-blackhole-optimization\.html/);
+  assert.match(app, /Optimize a Transformer on Blackhole/);
   assert.match(app, /Possible destination/);
   assert.match(mainApp, /href="\.\/discussion\.html"/);
   assert.match(styles, /\.topic-controls/);
@@ -312,6 +316,35 @@ test("publishes the Blackhole BRISC NCRISC bring-up decision chain", async () =>
   assert.match(report, /Root-cause closure record/);
   assert.match(report, /not supplied/);
   assert.ok((report.match(/```mermaid/g) ?? []).length >= 8);
+  assert.equal(publishedReport, report);
+});
+
+test("publishes the Transformer on Blackhole optimization decision chain", async () => {
+  const html = await readFile(new URL("discussion-transformer-blackhole-optimization.html", root), "utf8");
+  const app = await readFile(new URL("../src/TransformerOptimizationApp.tsx", root), "utf8");
+  const mainApp = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/transformer-optimization.css", root), "utf8");
+  const report = await readFile(new URL("../docs/DISCUSSION_TRANSFORMER_BLACKHOLE_OPTIMIZATION.md", root), "utf8");
+  const publishedReport = await readFile(new URL("DISCUSSION_TRANSFORMER_BLACKHOLE_OPTIMIZATION.md", root), "utf8");
+  assert.match(html, /Transformer on Blackhole optimization chain/);
+  assert.match(html, /(?:src|href)="\.\/assets\//);
+  assert.match(app, /PLAN READY/);
+  assert.match(app, /Two loops/);
+  assert.match(app, /ttnn\.linear/);
+  assert.match(app, /No invented/);
+  assert.match(app, /D9/);
+  assert.match(app, /MEASUREMENTS OPEN/);
+  assert.match(mainApp, /discussion-transformer-blackhole-optimization\.html/);
+  assert.match(styles, /\.optimization-workbench/);
+  assert.match(styles, /\.code-flow/);
+  assert.match(styles, /\.measurement-table/);
+  assert.match(report, /## Logic review of the plan/);
+  assert.match(report, /## Code review of the plan/);
+  assert.match(report, /Prefill and decode/);
+  assert.match(report, /MatmulDeviceOperation/);
+  assert.match(report, /measurements open/i);
+  assert.match(report, /speedup remains intentionally unclaimed/);
+  assert.ok((report.match(/```mermaid/g) ?? []).length >= 9);
   assert.equal(publishedReport, report);
 });
 

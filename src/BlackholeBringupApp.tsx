@@ -398,7 +398,8 @@ $TOOLS/riscv-tt-elf-addr2line -e kernel.elf \
 
       <footer className="bringup-footer">
         <div><b>TT•SIM · DISCUSSION CHAIN 01</b><p>Blackhole BRISC/NCRISC bring-up with explicit root-cause gates.</p></div>
-        <a href="./discussion.html">Discussion workbench →</a>
+        <a href="./discussion-transformer-blackhole-optimization.html">Chain 02 →</a>
+        <a href="./discussion.html">Discussion →</a>
         <a href="./firmware-flow.html">Firmware flow →</a>
         <a href="./index.html">Book →</a>
       </footer>

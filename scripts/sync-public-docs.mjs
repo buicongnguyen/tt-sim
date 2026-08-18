@@ -12,6 +12,7 @@ const documents = [
   "CONTRIBUTION_ROADMAP.md",
   "DISCUSSION.md",
   "DISCUSSION_BLACKHOLE_BRINGUP.md",
+  "DISCUSSION_TRANSFORMER_BLACKHOLE_OPTIMIZATION.md",
 ];
 
 await mkdir(new URL("../public/", import.meta.url), { recursive: true });

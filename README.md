@@ -37,6 +37,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - Kernel/compiler contribution roadmap: <https://buicongnguyen.github.io/tt-sim/#contribute>
 - Debugging and optimization discussion workbench: <https://buicongnguyen.github.io/tt-sim/discussion.html>
 - Blackhole BRISC/NCRISC bring-up decision chain: <https://buicongnguyen.github.io/tt-sim/discussion-blackhole-bringup.html>
+- Transformer on Blackhole optimization chain: <https://buicongnguyen.github.io/tt-sim/discussion-transformer-blackhole-optimization.html>
 
 ## Repository map
 
@@ -59,12 +60,14 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `docs/RISC_FIRMWARE_TO_KERNEL_FLOW.md` — source-linked BRISC/NCRISC/TRISC build, boot, dispatch and warm-launch analysis
 - `docs/CONTRIBUTION_ROADMAP.md` — hardware-free low-level kernel, TT-MLIR, upstream contribution and bounty strategy
 - `docs/DISCUSSION.md` — provisional debugging and optimization questions, experiments and promotion queue
+- `docs/DISCUSSION_TRANSFORMER_BLACKHOLE_OPTIMIZATION.md` — source-backed prefill/decode optimization flow from TTNN model code to TT-Metal kernels
 - `scripts/05-architecture-evidence.sh` — reproducible descriptor and architecture-LLK audit
 - `huawei.html` — dedicated Blackhole versus Huawei Ascend Pages route
 - `async-kernels.html` — dedicated asynchronous-kernel and matrix-granularity Pages route
 - `firmware-flow.html` — dedicated host-to-RISC firmware and operation-kernel Pages route
 - `discussion.html` — filterable provisional discussion and chapter-promotion workbench
 - `discussion-blackhole-bringup.html` — source-backed BRISC/NCRISC bring-up and compiler root-cause decision chain
+- `discussion-transformer-blackhole-optimization.html` — interactive Transformer-on-Blackhole optimization decision chain and measurement ledger
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope
