@@ -313,8 +313,9 @@ These are Watcher waypoint strings, not function names:
 The important diagnostic sentence is therefore:
 
 > **`R` without `K` and `K` without `KD` are different problems.** `R→K`
-> covers operation handoff, image/entry, CRT and ABI. `K→KD` covers the user
-> `kernel_main` body and its waits, memory traffic and generated instructions.
+> covers the shared-GO wait, operation handoff, image/entry, CRT and ABI.
+> `K→KD` covers the user `kernel_main` body and its waits, memory traffic and
+> generated instructions.
 
 One nuance: in the reviewed `ncrisc.cc`, `R` appears before the Blackhole loop
 that waits for subordinate `GO` and before the `kernel_lma` call. Therefore an
@@ -398,8 +399,8 @@ root cause:         OPEN until all compiler A/B gates pass
    data tests make the combined failure interpretable.
 3. **Validate the debugger before trusting silence.** Watcher and DPRINT have
    their own unit tests.
-4. **Use the first missing interval.** `R` without `K` is an entry/handoff class;
-   `K` without `KD` is a `kernel_main` class.
+4. **Use the first missing interval.** `R` without `K` is a shared-GO,
+   handoff/entry class; `K` without `KD` is a `kernel_main` class.
 5. **Dispatch mode is a controlled experiment.** Run only a reproducer that
    supports both paths; a hard-coded slow-dispatch call cannot test fast
    dispatch.
@@ -420,13 +421,13 @@ flowchart TD
     C -- yes --> D{NCRISC leaves W and reaches R?}
     D -- no --> D1[DM1 enable, LOAD/GO value, cache visibility, shared sync]
     D -- yes --> E{NCRISC operation reaches K?}
-    E -- no --> E1[ELF load, entry point, CRT, relocation, ABI]
+    E -- no --> E1[Shared GO, operation handoff, ELF load, entry, CRT, ABI]
     E -- yes --> F{Operation reaches KD?}
     F -- no --> F1[User kernel, NoC wait, semaphore, bad generated code]
     F -- yes --> G{Firmware reaches D and BRISC completes?}
     G -- no --> G1[Return ABI, post-kernel checks, DONE visibility]
     G -- yes --> H[Handshake is healthy; inspect result correctness]
-    E1 --> I{Host ELF equals device readback?}
+    E1 --> I{Materialized spans equal a supported explicit readback?}
     F1 --> J{Failure follows one source/optimization construct?}
     I -- no --> I1[Fix transport or address selection]
     I -- yes --> J
