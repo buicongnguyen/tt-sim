@@ -26,6 +26,8 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("async-kernels.html", root));
   await access(new URL("firmware-flow.html", root));
   await access(new URL("discussion.html", root));
+  await access(new URL("discussion-blackhole-bringup.html", root));
+  await access(new URL("DISCUSSION_BLACKHOLE_BRINGUP.md", root));
 });
 
 test("publishes the WSL agent and host-to-device trace plan", async () => {
@@ -275,6 +277,7 @@ test("publishes the debugging and optimization discussion workbench", async () =
   assert.match(app, /Build a host-to-device stack trace recipe/);
   assert.match(app, /Measure cold versus warm Program traffic/);
   assert.match(app, /Filter by discussion track/);
+  assert.match(app, /discussion-blackhole-bringup\.html/);
   assert.match(app, /Possible destination/);
   assert.match(mainApp, /href="\.\/discussion\.html"/);
   assert.match(styles, /\.topic-controls/);
@@ -284,6 +287,32 @@ test("publishes the debugging and optimization discussion workbench", async () =
   assert.match(guide, /## New-item template/);
   assert.match(guide, /question → reproducible observation → source evidence → conclusion → chapter/);
   assert.equal(publishedGuide, guide);
+});
+
+test("publishes the Blackhole BRISC NCRISC bring-up decision chain", async () => {
+  const html = await readFile(new URL("discussion-blackhole-bringup.html", root), "utf8");
+  const app = await readFile(new URL("../src/BlackholeBringupApp.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/blackhole-bringup.css", root), "utf8");
+  const report = await readFile(new URL("../docs/DISCUSSION_BLACKHOLE_BRINGUP.md", root), "utf8");
+  const publishedReport = await readFile(new URL("DISCUSSION_BLACKHOLE_BRINGUP.md", root), "utf8");
+  assert.match(html, /Blackhole bring-up debug chain/);
+  assert.match(html, /(?:src|href)="\.\/assets\//);
+  assert.match(app, /Prove the .*boundary/s);
+  assert.match(app, /there is no NCRISC→BRISC function call/);
+  assert.match(app, /GW\/GD\/W\/R\/K\/KD\/D/);
+  assert.match(app, /TT_METAL_KERNEL_READBACK_ENABLE/);
+  assert.match(app, /All six must pass/);
+  assert.match(app, /ROOT CAUSE OPEN/);
+  assert.match(styles, /\.decision-workbench/);
+  assert.match(styles, /\.handshake-flow/);
+  assert.match(report, /NCRISC does not call BRISC/);
+  assert.match(report, /## Logic review of the plan/);
+  assert.match(report, /## Code review of the plan/);
+  assert.match(report, /TT_METAL_KERNEL_MAP=1/);
+  assert.match(report, /Root-cause closure record/);
+  assert.match(report, /not supplied/);
+  assert.ok((report.match(/```mermaid/g) ?? []).length >= 8);
+  assert.equal(publishedReport, report);
 });
 
 test("provides a book-style chapter sidebar", async () => {

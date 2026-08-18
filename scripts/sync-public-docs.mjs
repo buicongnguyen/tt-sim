@@ -11,6 +11,7 @@ const documents = [
   "RISC_FIRMWARE_TO_KERNEL_FLOW.md",
   "CONTRIBUTION_ROADMAP.md",
   "DISCUSSION.md",
+  "DISCUSSION_BLACKHOLE_BRINGUP.md",
 ];
 
 await mkdir(new URL("../public/", import.meta.url), { recursive: true });

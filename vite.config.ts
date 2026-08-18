@@ -15,6 +15,7 @@ export default defineConfig({
         asyncKernels: fileURLToPath(new URL("./async-kernels.html", import.meta.url)),
         firmwareFlow: fileURLToPath(new URL("./firmware-flow.html", import.meta.url)),
         discussion: fileURLToPath(new URL("./discussion.html", import.meta.url)),
+        blackholeBringup: fileURLToPath(new URL("./discussion-blackhole-bringup.html", import.meta.url)),
       },
     },
   },

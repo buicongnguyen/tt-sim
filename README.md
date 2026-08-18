@@ -36,6 +36,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - Host-to-RISC firmware and operation-kernel flow: <https://buicongnguyen.github.io/tt-sim/firmware-flow.html>
 - Kernel/compiler contribution roadmap: <https://buicongnguyen.github.io/tt-sim/#contribute>
 - Debugging and optimization discussion workbench: <https://buicongnguyen.github.io/tt-sim/discussion.html>
+- Blackhole BRISC/NCRISC bring-up decision chain: <https://buicongnguyen.github.io/tt-sim/discussion-blackhole-bringup.html>
 
 ## Repository map
 
@@ -63,6 +64,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `async-kernels.html` — dedicated asynchronous-kernel and matrix-granularity Pages route
 - `firmware-flow.html` — dedicated host-to-RISC firmware and operation-kernel Pages route
 - `discussion.html` — filterable provisional discussion and chapter-promotion workbench
+- `discussion-blackhole-bringup.html` — source-backed BRISC/NCRISC bring-up and compiler root-cause decision chain
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope

@@ -65,17 +65,21 @@ that visible.
   and compare the captured host boundaries.
 - **Possible destination:** `WSL_AGENT_HOST_DEVICE_DEBUGGING.md`
 
-### DBG-02 — Distinguish firmware boot failure from operation-kernel failure
+### DBG-02 — Debug Blackhole BRISC/NCRISC bring-up
 
 - **Status:** `EVIDENCE`
-- **Question:** Which Watcher/DPRINT waypoints prove whether failure occurred
-  before worker initialization, before GO, or inside `kernel_main`?
-- **Hypothesis:** INIT-DONE, GO-seen, entry and completion markers provide a
-  minimal four-boundary classifier.
-- **Evidence needed:** One successful run and one deliberately broken run at
-  each boundary.
-- **Next experiment:** Remove one launch precondition at a time and record the
-  last observed marker.
+- **Detailed Q&A:** [Discussion chain 01 — Blackhole BRISC/NCRISC
+  bring-up](./DISCUSSION_BLACKHOLE_BRINGUP.md)
+- **Question:** How do we distinguish a shared launch failure,
+  operation-entry fault and real compiler miscompile?
+- **Hypothesis:** Paired waypoints, ELF readback and a controlled compiler A/B
+  can isolate the first broken boundary.
+- **Evidence available:** The control flow and eight-stage decision process are
+  pinned to `tt-metal@50a82f835593512c4176546b4af68d7e91315a86`.
+- **Evidence still needed:** Historical failing/passing compiler identities,
+  paired waypoints, failing PC, minimized valid input and final fix artifacts.
+- **Next experiment:** Recover those artifacts and execute the compiler A/B
+  closure matrix in the detailed Q&A.
 - **Possible destination:** `RISC_FIRMWARE_TO_KERNEL_FLOW.md`
 
 ### DBG-03 — Identify the exact binary executed by each RISC

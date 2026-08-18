@@ -15,6 +15,7 @@ type DiscussionTopic = {
   evidence: string;
   next: string;
   destination: string;
+  page?: string;
 };
 
 const topics: readonly DiscussionTopic[] = [
@@ -33,12 +34,13 @@ const topics: readonly DiscussionTopic[] = [
     id: "DBG-02",
     track: "debugging",
     status: "evidence",
-    title: "Separate boot failure from operation failure",
-    question: "Which waypoints prove whether failure happened during initialization, before GO or inside kernel_main?",
-    hypothesis: "INIT-DONE, GO-seen, kernel-entry and completion markers form a useful minimal classifier.",
-    evidence: "One successful and one deliberately broken run at each of the four boundaries.",
-    next: "Remove one launch precondition at a time and record the final observed marker.",
+    title: "Debug Blackhole BRISC/NCRISC bring-up",
+    question: "How do we distinguish a shared launch failure, operation-entry fault and real compiler miscompile?",
+    hypothesis: "Paired waypoints, ELF readback and a controlled compiler A/B can isolate the first broken boundary.",
+    evidence: "Pinned control-flow sources and an eight-stage decision plan; the historical compiler artifacts remain open.",
+    next: "Recover the failing/passing compiler hashes, paired waypoints, failing PC and minimized valid input.",
     destination: "Firmware-to-kernel flow",
+    page: "./discussion-blackhole-bringup.html",
   },
   {
     id: "DBG-03",
@@ -190,6 +192,7 @@ function DiscussionApp() {
 
         <section id="topics" className="discussion-section topics-section">
           <div className="discussion-heading inverse"><span>01 / DISCUSSION QUEUE</span><h2>Filter the questions.<br/>Keep the context.</h2><p>Debugging asks where and why execution failed. Optimization asks what can change while correctness remains intact.</p></div>
+          <a className="case-chain" href="./discussion-blackhole-bringup.html"><span>CASE CHAIN 01 · BLACKHOLE BRING-UP</span><h3>Prove the BRISC/NCRISC boundary before blaming the compiler.</h3><p>Eight decisions connect Watcher waypoints, binary readback, operation entry, compiler A/B and regression closure.</p><i>Open detailed Q&amp;A →</i></a>
           <div className="topic-controls">
             <div className="filter-group" role="group" aria-label="Filter by discussion track">
               {(["all", "debugging", "optimization"] as const).map((value) => <button key={value} type="button" className={track === value ? "active" : ""} aria-pressed={track === value} onClick={() => setTrack(value)}>{value}</button>)}
@@ -204,7 +207,7 @@ function DiscussionApp() {
             {filteredTopics.map((topic) => <article className={`topic-card ${topic.track}`} key={topic.id}>
               <header><span>{topic.id}</span><small className={`status ${topic.status}`}>{statusLabels[topic.status]}</small></header>
               <p className="topic-track">{topic.track}</p><h3>{topic.title}</h3><p className="topic-question">{topic.question}</p>
-              <details><summary>Open working note</summary><dl><div><dt>Hypothesis</dt><dd>{topic.hypothesis}</dd></div><div><dt>Evidence gate</dt><dd>{topic.evidence}</dd></div><div><dt>Next experiment</dt><dd>{topic.next}</dd></div><div><dt>Possible destination</dt><dd>{topic.destination}</dd></div></dl></details>
+              <details><summary>Open working note</summary><dl><div><dt>Hypothesis</dt><dd>{topic.hypothesis}</dd></div><div><dt>Evidence gate</dt><dd>{topic.evidence}</dd></div><div><dt>Next experiment</dt><dd>{topic.next}</dd></div><div><dt>Possible destination</dt><dd>{topic.destination}</dd></div></dl>{topic.page && <a className="topic-deep-link" href={topic.page}>Open detailed Q&amp;A →</a>}</details>
             </article>)}
           </div>
           {filteredTopics.length === 0 && <div className="empty-state"><b>No topics match.</b><p>Clear one filter or search for a broader mechanism.</p></div>}
