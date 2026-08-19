@@ -36,6 +36,33 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("DISCUSSION_PRESENTATION_30_MIN.md", root));
   await access(new URL("discussion-quantization.html", root));
   await access(new URL("DISCUSSION_TT_METAL_QUANTIZATION.md", root));
+  await access(new URL("debug-low-level-kernel-flow.html", root));
+  await access(new URL("DEBUG_LOW_LEVEL_KERNEL_FLOW.md", root));
+});
+
+test("publishes the low-level kernel Mermaid debug flow", async () => {
+  const html = await readFile(new URL("debug-low-level-kernel-flow.html", root), "utf8");
+  const main = await readFile(new URL("../src/debug-low-level-kernel-flow-main.tsx", root), "utf8");
+  const packageJson = await readFile(new URL("../package.json", root), "utf8");
+  const app = await readFile(new URL("../src/DebugLowLevelKernelFlowApp.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/debug-low-level-kernel-flow.css", root), "utf8");
+  const guide = await readFile(new URL("../docs/DEBUG_LOW_LEVEL_KERNEL_FLOW.md", root), "utf8");
+  const publishedGuide = await readFile(new URL("DEBUG_LOW_LEVEL_KERNEL_FLOW.md", root), "utf8");
+  assert.match(html, /Low-level kernel debug flow/);
+  assert.match(main, /from "mermaid"/);
+  assert.match(main, /await mermaid\.run/);
+  assert.match(packageJson, /"mermaid": "11\.17\.0"/);
+  assert.match(app, /HOST → FIRMWARE → WRAPPER → KERNEL_MAIN → DONE/);
+  assert.match(app, /R WITHOUT K/);
+  assert.match(app, /K WITHOUT KD/);
+  assert.match(app, /className="mermaid"/);
+  assert.match(styles, /\.mermaid-shell/);
+  const diagrams = [...guide.matchAll(/```mermaid\r?\n([\s\S]*?)```/g)].map((match) => match[1]);
+  assert.ok(diagrams.length >= 6);
+  assert.ok(diagrams.every((diagram) => /^(sequenceDiagram|flowchart TD)/.test(diagram)));
+  assert.match(guide, /NCRISC does not call BRISC/);
+  assert.match(guide, /dprint_server\.cpp/);
+  assert.equal(publishedGuide, guide);
 });
 
 test("publishes the WSL agent and host-to-device trace plan", async () => {

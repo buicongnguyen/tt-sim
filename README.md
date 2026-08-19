@@ -41,6 +41,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - Transformer on Blackhole optimization chain: <https://buicongnguyen.github.io/tt-sim/discussion-transformer-blackhole-optimization.html>
 - Source-backed 30-minute presentation room: <https://buicongnguyen.github.io/tt-sim/discussion-presentation.html>
 - TTNN/TT-Metal LLM quantization guide: <https://buicongnguyen.github.io/tt-sim/discussion-quantization.html>
+- Low-level kernel Mermaid debug flow: <https://buicongnguyen.github.io/tt-sim/debug-low-level-kernel-flow.html>
 
 ## Repository map
 
@@ -67,6 +68,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `docs/DISCUSSION_BLACKHOLE_SYNCHRONIZATION.md` — compiler/RISC/NoC fence boundaries, two semaphore families, hardware waits and race-debug labs
 - `docs/DISCUSSION_PRESENTATION_30_MIN.md` — copy-ready 30-minute research/achievement deck, boot flows, speaker notes and Q&A bank
 - `docs/DISCUSSION_TT_METAL_QUANTIZATION.md` — source-audited BFP8/BFP4, integer and MX decision guide for LLM inference
+- `docs/DEBUG_LOW_LEVEL_KERNEL_FLOW.md` — consolidated Mermaid cold-boot, Program-launch, NCRISC-handoff, waypoint and DPRINT flow
 - `scripts/05-architecture-evidence.sh` — reproducible descriptor and architecture-LLK audit
 - `huawei.html` — dedicated Blackhole versus Huawei Ascend Pages route
 - `async-kernels.html` — dedicated asynchronous-kernel and matrix-granularity Pages route
@@ -77,6 +79,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `discussion-transformer-blackhole-optimization.html` — interactive Transformer-on-Blackhole optimization decision chain and measurement ledger
 - `discussion-presentation.html` — interactive presentation room with per-slide copy controls and source-backed boot diagrams
 - `discussion-quantization.html` — interactive datatype ledger, model precision flow and copyable quantization experiments
+- `debug-low-level-kernel-flow.html` — rendered Mermaid atlas for low-level worker-kernel debugging
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope

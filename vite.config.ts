@@ -20,6 +20,7 @@ export default defineConfig({
         transformerOptimization: fileURLToPath(new URL("./discussion-transformer-blackhole-optimization.html", import.meta.url)),
         presentation: fileURLToPath(new URL("./discussion-presentation.html", import.meta.url)),
         quantization: fileURLToPath(new URL("./discussion-quantization.html", import.meta.url)),
+        debugLowLevelKernelFlow: fileURLToPath(new URL("./debug-low-level-kernel-flow.html", import.meta.url)),
       },
     },
   },

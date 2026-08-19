@@ -77,6 +77,18 @@ const topics: readonly DiscussionTopic[] = [
     page: "./discussion-blackhole-synchronization.html",
   },
   {
+    id: "DBG-06",
+    track: "debugging",
+    status: "evidence",
+    title: "Trace the low-level kernel boundary",
+    question: "Which host, firmware, wrapper or kernel_main boundary failed first?",
+    hypothesis: "A source-linked Mermaid sequence plus W/R/K/KD/D waypoints can select one short interval before intrusive debugging.",
+    evidence: "Six consolidated diagrams pin cold boot, Program launch, NCRISC handoff, waypoint routing, observer selection and DPRINT mechanics.",
+    next: "Capture one real failing waypoint pair and attach the matching ELF, PC and bounded DPRINT evidence.",
+    destination: "Firmware-to-kernel and bring-up chapters",
+    page: "./debug-low-level-kernel-flow.html",
+  },
+  {
     id: "OPT-01",
     track: "optimization",
     status: "experiment",
@@ -234,6 +246,7 @@ function DiscussionApp() {
             <a className="case-chain" href="./discussion-blackhole-synchronization.html"><span>SUBPAGE 03 · BLACKHOLE SYNCHRONIZATION</span><h3>Fence is not one fence.</h3><p>Separate compiler, RISC-V, NoC, L1 semaphore, CB and internal Tensix hardware-wait contracts before debugging a race.</p><i>Open field guide →</i></a>
             <a className="case-chain presentation" href="./discussion-presentation.html"><span>SUBPAGE 04 · 30-MINUTE PRESENTATION</span><h3>Tell the research story without outrunning the evidence.</h3><p>Copy-ready slides, speaker notes, two small boot/launch diagrams and defensible answers to likely technical questions.</p><i>Open presentation room →</i></a>
             <a className="case-chain quantization" href="./discussion-quantization.html"><span>SUBPAGE 05 · LLM QUANTIZATION</span><h3>An enum is not an operator promise.</h3><p>Choose BF16, BFP8, BFP4, integer or MX paths by tensor role, API legality, quality budget and measured traffic.</p><i>Open precision lab →</i></a>
+            <a className="case-chain low-level" href="./debug-low-level-kernel-flow.html"><span>SUBPAGE 06 · LOW-LEVEL KERNEL DEBUG FLOW</span><h3>Debug the first missing boundary.</h3><p>Rendered Mermaid connects cold boot, Program launch, NCRISC handoff, W/R/K/KD/D, observer selection and DPRINT.</p><i>Open Mermaid atlas →</i></a>
           </div>
           <div className="topic-controls">
             <div className="filter-group" role="group" aria-label="Filter by discussion track">

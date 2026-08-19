@@ -129,6 +129,23 @@ that visible.
 - **Possible destination:** `ASYNC_KERNELS_AND_MATRIX_GRANULARITY.md` and
   `TTSIM_DEBUGGING_PATH.md`
 
+### DBG-06 — Trace the low-level kernel boundary
+
+- **Status:** `EVIDENCE`
+- **Detailed diagrams:** [Discussion subpage 06 — debug low-level kernel
+  flow](./DEBUG_LOW_LEVEL_KERNEL_FLOW.md)
+- **Question:** Which host, firmware, wrapper or `kernel_main` boundary failed
+  first?
+- **Hypothesis:** A source-linked Mermaid sequence plus `W/R/K/KD/D`
+  waypoints can select one short interval before intrusive debugging.
+- **Evidence available:** Six diagrams consolidate cold boot, Program launch,
+  NCRISC handoff, waypoint routing, observer selection and DPRINT mechanics at
+  `tt-metal@50a82f835593512c4176546b4af68d7e91315a86`.
+- **Next experiment:** Attach one real failing waypoint pair, ELF, PC and
+  bounded DPRINT result to the relevant interval.
+- **Possible destination:** `RISC_FIRMWARE_TO_KERNEL_FLOW.md` and
+  `DISCUSSION_BLACKHOLE_BRINGUP.md`
+
 ## Optimization queue
 
 ### OPT-01 — Measure cold versus warm Program launch traffic
