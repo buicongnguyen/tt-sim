@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 type FormatKey = "bf16" | "bfp8" | "bfp4" | "uint8" | "int8" | "fp8" | "mxfp4";
+type CalibrationKey = "ptq-qat" | "why" | "mapping" | "threshold" | "granularity" | "tenstorrent";
 type ReferenceLink = { label: string; href: string };
 
 type FormatCard = {
@@ -16,12 +17,20 @@ type FormatCard = {
 
 const revision = "50a82f835593512c4176546b4af68d7e91315a86";
 const sourceRoot = `https://github.com/tenstorrent/tt-metal/blob/${revision}`;
+const ttMlirRevision = "71046369d603b97fd6a8dd8b947ca8588ac2a74f";
+const ttMlirSourceRoot = `https://github.com/tenstorrent/tt-mlir/blob/${ttMlirRevision}`;
 const officialDocs = {
   tensor: "https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/tensor.html",
   linear: "https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/api/ttnn.linear.html",
   toDtype: "https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/api/ttnn.to_dtype.html",
   computeDataflow: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/compute_engines_and_dataflow_within_tensix.html",
   tools: "https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html",
+} as const;
+
+const quantizationReferences = {
+  pytorchPractice: "https://pytorch.org/blog/quantization-in-practice/",
+  pytorchQat: "https://pytorch.org/blog/quantization-aware-training/",
+  tensorrtCalibration: "https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/inference-library/work-quantized-types.html#post-training-quantization-using-calibration",
 } as const;
 
 const formats: readonly FormatCard[] = [
@@ -48,7 +57,104 @@ const logicRows = [
   ["“BFP4 is four times faster than BF16.”", "Tile storage falls 71.9%, but execution includes alignment, conversion and compute.", "Report measured warm end-to-end speedup only.", { label:"BFP tile constants", href:`${sourceRoot}/tt_metal/api/tt-metalium/constants.hpp#L13-L21` }],
   ["“Quantize the entire model once.”", "Tensor roles and layers have different error sensitivity.", "Sweep one role/layer and roll back the first failure.", { label:"Per-role model policy", href:`${sourceRoot}/models/tt_transformers/tt/model_config.py#L128-L237` }],
   ["“MXFP4 is listed, so use it on Blackhole.”", "DataFormat is a union across generations; legality is checked per architecture.", "Treat MX as low-level research until the target operation says supported.", { label:"DataFormat legality warning", href:`${sourceRoot}/tt_metal/api/tt-metalium/tt_backend_api_types.hpp#L18-L56` }],
+  ["“Calibration makes the model INT8-ready.”", "Calibration selects clipping thresholds and qparams; it does not implement an INT8 operator.", "Freeze the numerical contract, then separately prove operation and kernel legality.", { label:"Pinned linear contract", href:`${sourceRoot}/ttnn/cpp/ttnn/operations/matmul/matmul_nanobind.cpp#L824-L898` }],
+  ["“TT-MLIR has Q/DQ conversion, so INT8 linear is ready.”", "IR conversion, operation validation and the target kernel are separate gates.", "Inspect emitted IR and prove the exact release-pinned operator on Blackhole.", { label:"Pinned TT-MLIR Q/DQ conversion", href:`${ttMlirSourceRoot}/lib/Conversion/StableHLOToTTIR/StableHLOToTTIRPatterns.cpp#L1307-L1385` }],
   ["“Output PCC is enough.”", "Error may accumulate across layers or long decode contexts.", "Gate layer tensors, logits/tokens and perplexity/task quality.", { label:"Acceptance methodology", href:"./DISCUSSION_TT_METAL_QUANTIZATION.md#step-3--validate-at-three-scopes" }],
+] as const;
+
+const calibrationQuestions: readonly {
+  key: CalibrationKey;
+  label: string;
+  question: string;
+  answer: string;
+  points: readonly string[];
+  sources: readonly ReferenceLink[];
+}[] = [
+  {
+    key: "ptq-qat",
+    label: "PTQ / QAT",
+    question: "What are PTQ and QAT?",
+    answer: "PTQ converts a trained floating-point model after training. QAT inserts fake quantization into the forward pass and fine-tunes the model so its weights adapt to clipping and rounding noise before conversion.",
+    points: [
+      "PTQ is the faster, cheaper starting point: collect statistics, choose quantization parameters, convert, then validate.",
+      "QAT keeps trainable weights in floating point while the forward pass simulates quantize/dequantize; gradients normally use a straight-through estimator.",
+      "QAT costs training data and compute, but can recover quality when low-bit PTQ misses the target.",
+    ],
+    sources: [
+      { label: "PyTorch PTQ workflow", href: quantizationReferences.pytorchPractice },
+      { label: "PyTorch QAT mechanism", href: quantizationReferences.pytorchQat },
+    ],
+  },
+  {
+    key: "why",
+    label: "WHY CALIBRATE",
+    question: "Why is calibration needed, and what does it do?",
+    answer: "Static activation quantization needs representative data because activation ranges depend on real inputs. Observers measure ranges or histograms, choose clipping thresholds, and turn those thresholds into scale and zero-point values.",
+    points: [
+      "Calibration does not train the weights, guarantee accuracy, or make an unsupported device kernel appear.",
+      "Weight-only quantization can derive ranges from the stored weights; static activations usually need calibration samples.",
+      "Dynamic activation quantization derives activation parameters at runtime, avoiding an offline activation-calibration pass at the cost of runtime work.",
+    ],
+    sources: [
+      { label: "Observers and calibration", href: quantizationReferences.pytorchPractice },
+      { label: "TensorRT calibration contract", href: quantizationReferences.tensorrtCalibration },
+    ],
+  },
+  {
+    key: "mapping",
+    label: "SYM / ASYM",
+    question: "Symmetric or asymmetric quantization?",
+    answer: "Both are affine mappings. Symmetric quantization centers the signed integer range at zero; asymmetric quantization learns a non-zero zero-point and can use more codes for skewed, non-zero-centered data.",
+    points: [
+      "Symmetric: a = max(|xmin|, |xmax|), s = a / qmax_abs, z = 0. It simplifies zero-point handling but wastes range for skewed data.",
+      "Asymmetric: s = (xmax − xmin)/(qmax − qmin), z = clamp(round(qmin − xmin/s)). It represents skewed activations better but adds zero-point handling.",
+      "Rounding, saturation and narrow-range rules must match the deployed backend exactly; signed INT8 often uses an effective symmetric magnitude of 127.",
+    ],
+    sources: [{ label: "PyTorch affine and symmetric mappings", href: quantizationReferences.pytorchPractice }],
+  },
+  {
+    key: "threshold",
+    label: "RANGE METHOD",
+    question: "Min-max, percentile, or KL calibration?",
+    answer: "These methods select the clipping threshold; scale and zero-point are derived afterward. The best method is the one that passes the model-quality gate on representative data—not the one with the largest raw range.",
+    points: [
+      "Min-max keeps the observed extrema. It is fast and deterministic, but one outlier can make most integer codes too coarse.",
+      "Percentile clips a chosen tail, such as the top 0.01%. It often handles rare outliers better, but the percentile is a validation-tuned hyperparameter.",
+      "KL/entropy scans candidate clipping thresholds and minimizes divergence between the reference histogram and a quantized approximation. Results depend on histogram bins and the backend implementation.",
+      "TensorRT's implicit quantization/calibration workflow is deprecated; use its calibrators here only as algorithm references and prefer an explicit Q/DQ deployment contract.",
+    ],
+    sources: [{ label: "TensorRT entropy and percentile calibrators", href: quantizationReferences.tensorrtCalibration }],
+  },
+  {
+    key: "granularity",
+    label: "GRANULARITY",
+    question: "Per-tensor, per-channel, or per-group?",
+    answer: "Granularity decides how many independent ranges are stored. More local scales usually reduce error, but require more metadata and explicit kernel support.",
+    points: [
+      "Per-tensor uses one scale/zero-point for the entire tensor: simplest, but sensitive to channel outliers.",
+      "Per-channel is common for weights because each output channel gets its own range.",
+      "Per-group is common in low-bit LLM weight paths; dynamic per-token activation scales are another option when the backend supports them.",
+    ],
+    sources: [{ label: "PyTorch quantization granularity", href: quantizationReferences.pytorchPractice }],
+  },
+  {
+    key: "tenstorrent",
+    label: "TT IMPLEMENT",
+    question: "How should I implement this for a Tenstorrent LLM?",
+    answer: "Freeze the target operator contract first. At the pinned TT-Metal revision, the audited generic ttnn.linear route lists BF16, BFP8_B, BFP4_B and FP32 tile inputs—not affine INT8. The practical model route is BF16 → BFP8 → selective BFP4; an affine INT8 experiment needs an operation whose exact contract is supported, or a custom operation and kernel path.",
+    points: [
+      "For affine INT8 PTQ: calibrate in the frontend, freeze qparams, then prove the TTNN operation, program factory, circular-buffer formats, LLK behavior and accumulators all implement the same mapping.",
+      "For QAT: make fake quantization reproduce the exact clipping, rounding, granularity and scale ownership of the deployment kernel.",
+      "Use ttnn.quantize/requantize/dequantize only where their checked contracts fit. They are elementwise utilities, not a quantized linear replacement.",
+    ],
+    sources: [
+      { label: "Pinned ttnn.linear binding", href: `${sourceRoot}/ttnn/cpp/ttnn/operations/matmul/matmul_nanobind.cpp#L824-L898` },
+      { label: "TTNN quantize checks", href: `${sourceRoot}/ttnn/cpp/ttnn/operations/eltwise/quantization/quantization.cpp#L179-L204` },
+      { label: "TT-Transformers precision policy", href: `${sourceRoot}/models/tt_transformers/tt/model_config.py#L128-L237` },
+      { label: "Pinned TT-MLIR StableHLO Q/DQ conversion", href: `${ttMlirSourceRoot}/lib/Conversion/StableHLOToTTIR/StableHLOToTTIRPatterns.cpp#L1307-L1385` },
+      { label: "Pinned TT-MLIR quantization options", href: `${ttMlirSourceRoot}/include/ttmlir/Dialect/TTNN/Pipelines/TTNNPipelines.h#L306-L430` },
+    ],
+  },
 ] as const;
 
 const accuracyCode = `# Existing TT-Transformers baseline selectors
@@ -96,8 +202,10 @@ x_hat = ttnn.dequantize(
 
 function QuantizationApp() {
   const [activeKey, setActiveKey] = useState<FormatKey>("bfp8");
+  const [activeCalibrationKey, setActiveCalibrationKey] = useState<CalibrationKey>("ptq-qat");
   const [copied, setCopied] = useState<string | null>(null);
   const active = useMemo(() => formats.find((format) => format.key === activeKey) ?? formats[1], [activeKey]);
+  const activeCalibration = useMemo(() => calibrationQuestions.find((item) => item.key === activeCalibrationKey) ?? calibrationQuestions[0], [activeCalibrationKey]);
 
   async function copy(text: string, label: string) {
     await navigator.clipboard.writeText(text);
@@ -109,7 +217,7 @@ function QuantizationApp() {
     <div className="quant-page">
       <header className="quant-topbar">
         <a className="quant-brand" href="./index.html"><b>TT•SIM</b><span>precision lab</span></a>
-        <nav aria-label="Page navigation"><a href="#formats">Formats</a><a href="#flow">Data path</a><a href="#apply">Apply</a><a href="#review">Review</a><a className="quant-back" href="./discussion.html">← Discussion</a></nav>
+        <nav aria-label="Page navigation"><a href="#formats">Formats</a><a href="#flow">Data path</a><a href="#apply">Apply</a><a href="#calibration">Calibration</a><a href="#review">Review</a><a className="quant-back" href="./discussion.html">← Discussion</a></nav>
       </header>
 
       <main>
@@ -149,14 +257,38 @@ function QuantizationApp() {
           <div className="acceptance-matrix"><div className="acceptance-row head"><b>GATE</b><b>PREFILL</b><b>DECODE</b><b>REJECT WHEN</b></div><div className="acceptance-row"><span>QUALITY</span><p>Layer outputs, logits, perplexity/task score</p><p>Long-context token/logit agreement</p><p>Any agreed threshold fails</p></div><div className="acceptance-row"><span>PERFORMANCE</span><p>Warm TTFT + prompt tokens/s</p><p>Warm ms/token + user/aggregate t/s</p><p>Conversion cost erases the gain</p></div><div className="acceptance-row"><span>RESOURCE</span><p>Peak L1 + DRAM/NoC traffic</p><p>KV-cache bytes + dispatch gaps</p><p>New spill, recompile or instability appears</p></div></div>
         </section>
 
+        <section id="calibration" className="calibration-section-quant">
+          <div className="quant-heading"><span>04 / PTQ · QAT · CALIBRATION</span><h2>Choose the mapping.<br/>Then prove the kernel.</h2><p>Calibration chooses a numeric mapping; it does not create an unsupported kernel. Keep frontend quantization policy and Tenstorrent device legality as two explicit gates.</p></div>
+          <div className="calibration-lanes" aria-label="PTQ and QAT implementation paths">
+            <article><span>PTQ · NO WEIGHT TRAINING</span><b>FP model → observers → representative calibration → thresholds → qparams → convert</b><p>Fast first experiment. Static activation ranges come from representative samples; weights can often be measured directly.</p><a href={quantizationReferences.pytorchPractice}>Official PyTorch PTQ workflow ↗</a></article>
+            <article><span>QAT · FINE-TUNE UNDER NOISE</span><b>FP model → fake quantize → fine-tune → freeze observers → convert</b><p>The forward pass simulates clipping and rounding while trainable weights remain floating point.</p><a href={quantizationReferences.pytorchQat}>Official PyTorch QAT mechanism ↗</a></article>
+            <i>Both paths → backend legality → layer/model quality → warm profile</i>
+          </div>
+
+          <div className="calibration-workbench">
+            <div className="calibration-tabs" role="tablist" aria-label="PTQ QAT calibration question chain">{calibrationQuestions.map((item, index) => <button key={item.key} type="button" role="tab" aria-selected={item.key === activeCalibration.key} className={item.key === activeCalibration.key ? "active" : ""} onClick={() => setActiveCalibrationKey(item.key)}><small>Q{index + 1}</small><b>{item.label}</b></button>)}</div>
+            <article className="calibration-answer" role="tabpanel"><span>QUESTION CHAIN / {activeCalibration.label}</span><h3>{activeCalibration.question}</h3><p className="calibration-lead">{activeCalibration.answer}</p><ul>{activeCalibration.points.map((point) => <li key={point}>{point}</li>)}</ul><div>{activeCalibration.sources.map((source) => <a key={source.href} href={source.href}>{source.label} ↗</a>)}</div></article>
+          </div>
+
+          <div className="formula-grid">
+            <article><span>GENERIC AFFINE MAP</span><code>q = clamp(round(x / s) + z, qmin, qmax)</code><code>x̂ = s × (q − z)</code><p><b>s</b> is scale; <b>z</b> is the integer code representing real zero.</p></article>
+            <article><span>SYMMETRIC</span><code>a = max(|xmin|, |xmax|)</code><code>s = a / qmax_abs · z = 0</code><p>Simple zero handling; can waste codes when the distribution is skewed.</p></article>
+            <article><span>ASYMMETRIC</span><code>s = (xmax − xmin) / (qmax − qmin)</code><code>z = clamp(round(qmin − xmin / s), qmin, qmax)</code><p>Uses the available codes for a shifted range; zero-point math must be supported.</p></article>
+          </div>
+
+          <div className="calibration-methods"><div className="method-head"><b>THRESHOLD METHOD</b><b>MECHANISM</b><b>WHEN TO TRY</b><b>FAILURE MODE</b></div><div><span>MIN–MAX</span><p>Keep observed extrema.</p><p>Clean distributions; fast baseline.</p><p>Outlier stretches the scale.</p></div><div><span>PERCENTILE</span><p>Clip a selected tail probability.</p><p>Rare activation outliers.</p><p>Percentile overfit to calibration set.</p></div><div><span>KL / ENTROPY</span><p>Minimize histogram divergence after quantization.</p><p>Histogram-based static activation PTQ.</p><p>Bin and backend sensitivity.</p></div></div>
+
+          <div className="tenstorrent-calibration-steps"><header><span>TENSTORRENT IMPLEMENTATION ORDER</span><a href="./DISCUSSION_TT_METAL_QUANTIZATION.md#question-6--how-do-i-implement-affine-quantization-for-a-tenstorrent-llm">Copy-ready full procedure ↗</a></header><ol><li><b>Freeze</b><p>Model, input distribution, quality budget, Blackhole target and exact deployment operator.</p></li><li><b>Baseline</b><p>Save BF16 logits, tokens, perplexity/task score and warm performance.</p></li><li><b>Select</b><p>PTQ or QAT; weight-only, static or dynamic activations; granularity and mapping.</p></li><li><b>Observe</b><p>Collect ranges/histograms or fine-tune with deployment-faithful fake quantization.</p></li><li><b>Convert</b><p>Freeze thresholds, scales and zero-points; export packed tensors and Q/DQ boundaries.</p></li><li><b>Prove TT legality</b><p>Operation → program factory → CB formats → LLK → accumulator → packer.</p></li><li><b>Accept</b><p>Require layer, graph, model-quality and repeated warm-performance gates.</p></li></ol></div>
+        </section>
+
         <section className="integer-section-quant">
-          <div className="quant-heading light"><span>04 / INTEGER PATH</span><h2>Useful utility.<br/>Different promise.</h2><p><code>ttnn.quantize</code>, <code>requantize</code> and <code>dequantize</code> are real device operations, but their current contracts do not turn <code>ttnn.linear</code> into a generic INT8 LLM kernel.</p></div>
+          <div className="quant-heading light"><span>05 / INTEGER PATH</span><h2>Useful utility.<br/>Different promise.</h2><p><code>ttnn.quantize</code>, <code>requantize</code> and <code>dequantize</code> are real device operations, but their current contracts do not turn <code>ttnn.linear</code> into a generic INT8 LLM kernel.</p></div>
           <div className="integer-grid"><article><header><span>A · AFFINE UTILITY</span><button type="button" onClick={() => copy(utilityCode,"UTILITY")}>{copied === "UTILITY" ? "COPIED" : "COPY"}</button></header><pre>{utilityCode}</pre></article><aside><div><b>QUANTIZE</b><p>Floating input → INT32 or per-tensor UINT8 output.</p></div><div><b>REQUANTIZE</b><p>INT32/UINT8 input and output; per-channel UINT8 output is rejected.</p></div><div><b>DEQUANTIZE</b><p>INT32/UINT8 input → BF16 or FP32 output.</p></div><a href={`${sourceRoot}/ttnn/cpp/ttnn/operations/eltwise/quantization/quantization.cpp#L179-L204`}>Quantize checks ↗</a><a href={`${sourceRoot}/ttnn/cpp/ttnn/operations/eltwise/quantization/quantization.cpp#L317-L341`}>Requantize checks ↗</a><a href={`${sourceRoot}/ttnn/cpp/ttnn/operations/eltwise/quantization/quantization.cpp#L468-L485`}>Dequantize checks ↗</a></aside></div>
           <div className="int8-boundary"><span>WHAT EXISTS BELOW TTNN LINEAR</span><p>Blackhole LLK contains integer format handling and an INT8-math enable path. That proves hardware/LLK capability—not that arbitrary TTNN matmul shapes, layouts, scaling and accuracy are already productized.</p><a href={`${sourceRoot}/tt_metal/tt-llk/tt_llk_blackhole/common/inc/ckernel_defs.h#L279-L284`}>INT8 math predicate ↗</a><a href={`${sourceRoot}/tt_metal/tt-llk/tt_llk_blackhole/llk_lib/llk_math_common.h#L33-L56`}>Math configuration ↗</a></div>
         </section>
 
         <section id="review" className="logic-section-quant">
-          <div className="quant-heading"><span>05 / LOGIC REVIEW</span><h2>Claims that survive<br/>code review.</h2><p>Each tempting shortcut below was checked against the pinned TT-Metal and model source.</p></div>
+          <div className="quant-heading"><span>06 / LOGIC REVIEW</span><h2>Claims that survive<br/>code review.</h2><p>Each tempting shortcut below was checked against the pinned TT-Metal and model source.</p></div>
           <div className="logic-table"><div className="logic-row head"><b>TEMPTING CLAIM</b><b>WHY IT FAILS</b><b>REPLACEMENT + REFERENCE</b></div>{logicRows.map(([claim,problem,replacement,source]) => <div className="logic-row" key={claim}><p>{claim}</p><p>{problem}</p><p>{replacement}<a href={source.href}>{source.label} ↗</a></p></div>)}</div>
           <div className="quant-source-map"><div><span>MODEL POLICY</span><a href={`${sourceRoot}/models/tt_transformers/tt/model_config.py#L67-L80`}>Tensor/precision groups ↗</a><a href={`${sourceRoot}/models/tt_transformers/tt/model_config.py#L128-L237`}>Accuracy/performance ↗</a><a href={`${sourceRoot}/models/tt_transformers/tt/model_config.py#L4520-L4598`}>Per-decoder mapping ↗</a></div><div><span>DATA CONTRACT</span><a href={`${sourceRoot}/tt_metal/api/tt-metalium/tensor/tensor_types.hpp#L26-L40`}>DataType ↗</a><a href={`${sourceRoot}/tt_metal/api/tt-metalium/tt_backend_api_types.hpp#L18-L56`}>Low-level DataFormat ↗</a><a href={`${sourceRoot}/ttnn/cpp/ttnn/operations/matmul/matmul_nanobind.cpp#L824-L898`}>Linear ↗</a></div><div><span>PINNED REVISION</span><code>{revision}</code><p>Verified against <code>/home/n/src/tt-metal</code> in WSL Ubuntu.</p></div></div>
         </section>

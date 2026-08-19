@@ -402,6 +402,148 @@ If host sampling is on the critical path, test an on-device supported path for
 the actual batch/sampling mode. Preserve exact sampling semantics as a
 correctness condition.
 
+## Compiler branch — where TT-Forge and TT-MLIR enter
+
+The official project name is **TT-Forge**, not “tt-force.” In the current
+Tenstorrent stack, the TT-Forge repository is the umbrella for the end-to-end
+compiler projects and TT-MLIR is the core middle/backend compiler. The
+[official TT-Forge overview](https://docs.tenstorrent.com/forge/index.html)
+lists TT-XLA and TT-Forge-ONNX as frontends and TT-MLIR as the middle/backend.
+The [current TT-Forge repository](https://github.com/tenstorrent/tt-forge)
+describes the following responsibilities:
+
+| Project | Current responsibility |
+|---|---|
+| TT-XLA | primary PyTorch/JAX frontend; PJRT produces StableHLO for TT-MLIR |
+| TT-Forge-ONNX | ONNX, TensorFlow and PaddlePaddle frontend through TVM |
+| TT-MLIR | TTIR, TTNN and TTKernel dialects; graph fusion, sharding, layout and lowering |
+| TT-Lang | early-preview Python DSL for high-performance custom kernels |
+| TTNN / TT-Metalium | operation/runtime and low-level program/kernel implementation |
+
+This does not invalidate the handwritten path audited in the rest of this page.
+It creates **two distinct routes** that converge on TTNN/TT-Metalium:
+
+```mermaid
+flowchart TD
+    subgraph Manual[Handwritten TTNN Transformer]
+      P1[PyTorch checkpoint] --> M[models/tt_transformers]
+      M --> N1[TTNN operations + explicit configs]
+    end
+    subgraph Compiler[Current TT-Forge compiler route]
+      P2[PyTorch / JAX] --> X[TT-XLA]
+      X --> H[StableHLO]
+      H --> I[TTIR]
+      O[ONNX / TensorFlow / PaddlePaddle] --> F[TT-Forge-ONNX]
+      F --> I
+      I --> G[TT-MLIR graph passes]
+      G --> Q{Selected backend}
+      Q --> N2[TTNN-IR]
+      Q --> N3[TTKernel-IR]
+      Q --> N4[TTMetal-IR]
+    end
+    N1 --> T[TTNN]
+    N2 --> T
+    T --> U[TT-Metalium]
+    N3 --> U
+    N4 --> U
+    U --> K[LLK + RISC kernels]
+    K --> B[Blackhole]
+```
+
+### Release and revision boundary
+
+The latest TT-Forge development release displayed during this review on
+**19 August 2026** was
+[`1.5.0.dev20260819000359`](https://github.com/tenstorrent/tt-forge/releases).
+Its release record pins:
+
+| Dependency | Release-pinned commit |
+|---|---|
+| TT-XLA | `2ddaf4bc36f7def52dc60d392c820ab464e99f30` |
+| TT-MLIR | `71046369d603b97fd6a8dd8b947ca8588ac2a74f` |
+| TT-Metal | `5beed318d0f0d1c6212e605947fb0be80c9e0a1d` |
+
+The handwritten TTNN analysis in this page is pinned to a different local
+revision: `tt-metal@50a82f835593512c4176546b4af68d7e91315a86`.
+Therefore:
+
+> Do not combine a finding from the local pinned TTNN source with a finding from
+> the latest TT-Forge dependency set as though they came from one build. Re-run
+> the source and performance audit at the exact dependency commits used by the
+> selected TT-Forge release.
+
+### How the four Transformer performance levers divide across the stack
+
+| Lever | TT-Forge / TT-MLIR responsibility | TTNN / TT-Metal responsibility | Acceptance evidence |
+|---|---|---|---|
+| KV cache and attention | for recognized frontend forms, preserve cache/update and SDPA semantics through legal conversion/fusion | execute paged cache update, chunked SDPA and reader/compute/writer kernels | successful lowering for the exact graph plus context-bucket traffic and long-decode token agreement |
+| layout and sharding | propagate legal layouts, select operation configurations and manage spills using the target system description | honor concrete memory configs, grids, circular buffers and NoC ownership | fewer legal conversions/spills in both IR and device traces |
+| quantization | preserve Q/DQ and dtype semantics for supported patterns; reject or decompose unsupported forms | provide legal storage, math, accumulation, pack/unpack and conversion kernels | exact bit-width/operator lowering plus layer/model quality and warm traffic/latency |
+| fusion and dispatch | recognize graph patterns and remove materialized intermediates or layout repair | cache programs, capture stable traces, dispatch and run the fused operation | fewer dispatches, allocations or transferred bytes—not only fewer IR operations |
+
+The TT-MLIR
+[dialect overview](https://docs.tenstorrent.com/tt-mlir/dialects-overview.html)
+defines TTIR as the high-level tensor graph, TTNN as the dialect modeling the
+TTNN API, TTKernel for kernel-library operations and TTMetal for host-to-device
+dispatch. The current
+[TTNN optimizer documentation](https://docs.tenstorrent.com/tt-mlir/specs/ttnn-optimizer.html)
+describes layout propagation, operation-configuration selection and L1 spill
+management. Those are compiler decisions only when the model actually passes
+through that compiler pipeline.
+
+The release-pinned TT-MLIR code makes three parts of that statement concrete:
+
+- [`StableHLOToTTIRPatterns.cpp:1307–1385`](https://github.com/tenstorrent/tt-mlir/blob/71046369d603b97fd6a8dd8b947ca8588ac2a74f/lib/Conversion/StableHLOToTTIR/StableHLOToTTIRPatterns.cpp#L1307-L1385)
+  converts recognized StableHLO uniform quantize/dequantize operations to TTIR
+  quantize, requantize and dequantize operations.
+- [`StableHLOToTTIRPatterns.cpp:8449–8641`](https://github.com/tenstorrent/tt-mlir/blob/71046369d603b97fd6a8dd8b947ca8588ac2a74f/lib/Conversion/StableHLOToTTIR/StableHLOToTTIRPatterns.cpp#L8449-L8641)
+  recognizes specific `tt.fill_cache`, `tt.update_cache` and
+  `tt.paged_update_cache` custom calls; the SDPA composite conversion has its
+  own operand/result and mask checks in
+  [`StableHLOLegalizeCompositePass.cpp:2064–2138`](https://github.com/tenstorrent/tt-mlir/blob/71046369d603b97fd6a8dd8b947ca8588ac2a74f/lib/Conversion/StableHLOToTTIR/StableHLOLegalizeCompositePass.cpp#L2064-L2138).
+- [`TTNNPipelines.cpp:100–158`](https://github.com/tenstorrent/tt-mlir/blob/71046369d603b97fd6a8dd8b947ca8588ac2a74f/lib/Dialect/TTNN/Pipelines/TTNNPipelines.cpp#L100-L158)
+  assembles the current greedy memory-layout propagation, L1-spill management,
+  canonicalization and operation-validation/fallback sequence.
+
+These files prove that conversion machinery exists. They do **not** prove that
+an arbitrary Transformer graph matches a recognized pattern, that every shape
+and dtype is legal, or that the resulting operation has a performant Blackhole
+kernel. Inspect the emitted IR and run the exact model.
+
+> **Blackhole budget warning:** the current TTNN optimizer document explicitly
+> says its example capacity, latency and per-core budget numbers are Wormhole
+> values. The pass structure is useful for Blackhole analysis, but its numeric
+> budgets must come from the selected Blackhole system descriptor and backend,
+> not from those example tables.
+
+```mermaid
+flowchart TD
+    Q{How was this model produced?}
+    Q -->|TT-XLA / TT-Forge-ONNX| C[Inspect StableHLO or TTIR]
+    C --> P[Inspect TT-MLIR fusion, layout and sharding passes]
+    P --> R[Inspect lowered TTNN/TTKernel/TTMetal contract]
+    Q -->|models/tt_transformers| N[Profile handwritten TTNN calls and configs]
+    N --> O[Minimize the hot TTNN operation]
+    R --> S{Same shared operation is still hot?}
+    O --> S
+    S -->|no| H[Fix the owning high layer]
+    S -->|yes| K[Inspect shared TT-Metal factory and kernels]
+```
+
+### Practical decision rule
+
+1. For an existing `models/tt_transformers` implementation, begin with its
+   TTNN model/configuration, KV-cache and trace paths.
+2. For a PyTorch/JAX model entering through TT-XLA, inspect StableHLO → TTIR →
+   the selected backend IR and the TT-MLIR passes before editing a device
+   kernel.
+3. For an ONNX-family model, inspect TT-Forge-ONNX → TTIR before the shared
+   TT-MLIR route.
+4. Descend into TT-Metal only after either route produces a minimized operation
+   whose lower-level implementation is the measured cause.
+5. Compare the two routes only with the same model, inputs, data formats,
+   hardware, release-pinned dependencies and quality gate.
+
 ## Step 8 — follow a hot `ttnn.linear` into TT-Metal before changing kernels
 
 The code path for a hot projection is concrete:
@@ -486,6 +628,10 @@ The plan was reviewed against these failure modes:
 | Trust first-run time | includes compilation and cache population | cold and warm results recorded separately |
 | Use simulator time as Blackhole speed | simulator wall time is not silicon performance | hardware profiler for performance claims |
 | Claim a speedup without supplied results | creates fictional evidence | blank measurement ledger until run |
+| Treat TT-Forge and TT-MLIR as synonyms | TT-Forge is the end-to-end stack; TT-MLIR is the compiler core | name the frontend, IR boundary and lowering path |
+| Mix local TT-Metal and latest TT-Forge source findings | the release pins a different TT-Metal dependency | repeat the audit at one recorded dependency set |
+| Treat an IR conversion pattern as model support | pattern matching, op validation, shape/dtype legality and the target kernel are separate gates | inspect emitted IR and run the exact graph on the release-pinned target |
+| Copy TTNN optimizer memory numbers into a Blackhole plan | the official page labels those numerical examples as Wormhole values | use the Blackhole system descriptor and backend validation for budgets |
 
 The dependency order is also deliberate:
 
@@ -528,6 +674,12 @@ The source review produced these concrete conclusions:
 8. **No private-model result can be inferred from public code.** The final
    performance table remains unfilled until the exact model runs on the exact
    Blackhole target.
+9. **TT-Forge and handwritten TTNN are separate entry routes.** Compiler-level
+   conclusions apply only when the model passes through TT-XLA/TT-Forge-ONNX
+   and TT-MLIR; the existing TT-Transformers model uses explicit TTNN code.
+10. **Release pins are part of the experiment contract.** The latest reviewed
+    TT-Forge development release uses a TT-Metal revision different from this
+    page's local source baseline.
 
 ## Experiment ladder and decision record
 
@@ -613,6 +765,20 @@ The optimization is complete only when all of these are true:
 - [TT-Metalium tools](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html)
 - [Host-to-RISC flow in this guide](./RISC_FIRMWARE_TO_KERNEL_FLOW.md)
 
+### Current TT-Forge and TT-MLIR compiler route
+
+- [TT-Forge repository and current architecture](https://github.com/tenstorrent/tt-forge)
+- [Official TT-Forge overview](https://docs.tenstorrent.com/forge/index.html)
+- [TT-Forge releases and dependency pins](https://github.com/tenstorrent/tt-forge/releases)
+- [TT-MLIR repository](https://github.com/tenstorrent/tt-mlir)
+- [TT-MLIR architecture](https://docs.tenstorrent.com/tt-mlir/overview.html)
+- [TT-MLIR dialect overview](https://docs.tenstorrent.com/tt-mlir/dialects-overview.html)
+- [Current TTNN optimizer](https://docs.tenstorrent.com/tt-mlir/specs/ttnn-optimizer.html)
+- [Release-pinned StableHLO Q/DQ conversion](https://github.com/tenstorrent/tt-mlir/blob/71046369d603b97fd6a8dd8b947ca8588ac2a74f/lib/Conversion/StableHLOToTTIR/StableHLOToTTIRPatterns.cpp#L1307-L1385)
+- [Release-pinned cache-update conversion](https://github.com/tenstorrent/tt-mlir/blob/71046369d603b97fd6a8dd8b947ca8588ac2a74f/lib/Conversion/StableHLOToTTIR/StableHLOToTTIRPatterns.cpp#L8449-L8641)
+- [Release-pinned SDPA composite conversion](https://github.com/tenstorrent/tt-mlir/blob/71046369d603b97fd6a8dd8b947ca8588ac2a74f/lib/Conversion/StableHLOToTTIR/StableHLOLegalizeCompositePass.cpp#L2064-L2138)
+- [Release-pinned TTNN optimizer pipeline](https://github.com/tenstorrent/tt-mlir/blob/71046369d603b97fd6a8dd8b947ca8588ac2a74f/lib/Dialect/TTNN/Pipelines/TTNNPipelines.cpp#L100-L158)
+
 ## Final conclusion
 
 Optimizing a Transformer on Blackhole is not a single kernel exercise. First
@@ -621,6 +787,12 @@ stabilize shapes. Then optimize the producer-to-consumer memory-layout chain,
 attention/KV-cache path, gated MLP, per-role precision and repeated decode
 dispatch. Follow a hot operation from the model through TTNN into its TT-Metal
 reader/writer/compute kernels only when the measured bottleneck requires it.
+
+For a compiler-ingested model, add an earlier loop: inspect the TT-XLA or
+TT-Forge-ONNX frontend, TTIR, and TT-MLIR fusion/layout/sharding decisions before
+descending into the shared TTNN/TT-Metal implementation. The compiler path and
+the handwritten TTNN path are complementary experiments, not interchangeable
+source baselines.
 
 This page supplies the source-backed map and decision gates. The model-specific
 speedup remains intentionally unclaimed until the measurement ledger is filled.

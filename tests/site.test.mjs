@@ -411,9 +411,18 @@ test("publishes the Transformer on Blackhole optimization decision chain", async
   assert.match(app, /No invented/);
   assert.match(app, /D9/);
   assert.match(app, /MEASUREMENTS OPEN/);
+  assert.match(app, /Forge compiles/);
+  assert.match(app, /TT-Forge.*not.*tt-force/is);
+  assert.match(app, /1\.5\.0\.dev20260819000359/);
+  assert.match(app, /TTNN-IR \/ TTKernel-IR \/ TTMetal-IR/);
+  assert.match(app, /01 · KV CACHE \+ ATTENTION/);
+  assert.match(app, /Capability boundary/);
+  assert.match(app, /numerical memory examples are explicitly Wormhole values/);
   assert.match(mainApp, /discussion-transformer-blackhole-optimization\.html/);
   assert.match(styles, /\.optimization-workbench/);
   assert.match(styles, /\.code-flow/);
+  assert.match(styles, /\.compiler-release-strip/);
+  assert.match(styles, /\.compiler-lever-matrix/);
   assert.match(styles, /\.measurement-table/);
   assert.match(report, /## Logic review of the plan/);
   assert.match(report, /## Code review of the plan/);
@@ -424,7 +433,14 @@ test("publishes the Transformer on Blackhole optimization decision chain", async
   assert.match(report, /HF_MODEL=meta-llama\/Llama-3\.1-8B\r?\n/);
   assert.doesNotMatch(report, /HF_MODEL=meta-llama\/Llama-3\.1-8B-Instruct/);
   assert.match(report, /BFLOAT16, FLOAT32, BFLOAT8_B and/);
-  assert.ok((report.match(/```mermaid/g) ?? []).length >= 9);
+  assert.match(report, /## Compiler branch — where TT-Forge and TT-MLIR enter/);
+  assert.match(report, /TT-Forge repository is the umbrella/);
+  assert.match(report, /71046369d603b97fd6a8dd8b947ca8588ac2a74f/);
+  assert.match(report, /How the four Transformer performance levers divide/);
+  assert.match(report, /Do not combine a finding from the local pinned TTNN source/);
+  assert.match(report, /TTNNPipelines\.cpp:100–158/);
+  assert.match(report, /example capacity, latency and per-core budget numbers are Wormhole/);
+  assert.ok((report.match(/```mermaid/g) ?? []).length >= 11);
   assert.equal(publishedReport, report);
 });
 
@@ -485,6 +501,16 @@ test("publishes the TTNN and TT-Metal LLM quantization decision guide", async ()
   assert.match(app, /format-references/);
   assert.match(app, /Official linear dtype table/);
   assert.match(app, /Quasar\/DFB MXFP4 test/);
+  assert.match(app, /What are PTQ and QAT/);
+  assert.match(app, /Calibration chooses a numeric mapping/);
+  assert.match(app, /Symmetric or asymmetric quantization/);
+  assert.match(app, /Min-max, percentile, or KL calibration/);
+  assert.match(app, /pytorch\.org\/blog\/quantization-aware-training/);
+  assert.match(app, /TensorRT calibration contract/);
+  assert.match(app, /implicit quantization\/calibration workflow is deprecated/);
+  assert.match(app, /Pinned TT-MLIR StableHLO Q\/DQ conversion/);
+  assert.match(styles, /\.calibration-workbench/);
+  assert.match(styles, /\.formula-grid/);
   assert.match(mainApp, /discussion-quantization\.html/);
   assert.match(discussionApp, /SUBPAGE 05 · LLM QUANTIZATION/);
   assert.match(styles, /\.format-workbench/);
@@ -500,7 +526,15 @@ test("publishes the TTNN and TT-Metal LLM quantization decision guide", async ()
   assert.match(report, /## Code review conclusions/);
   assert.match(report, /## Claim-to-reference map/);
   assert.match(report, /official Tensix compute-dataflow documentation/);
-  assert.ok((report.match(/```mermaid/g) ?? []).length >= 5);
+  assert.match(report, /## PTQ, QAT and calibration question chain/);
+  assert.match(report, /Question 2 — why is calibration needed/);
+  assert.match(report, /Asymmetric affine quantization/);
+  assert.match(report, /entropy \/ KL divergence/);
+  assert.match(report, /calibration chooses a numeric mapping; it does not create an/i);
+  assert.match(report, /Question 6 — how do I implement affine quantization for a Tenstorrent LLM/);
+  assert.match(report, /legacy calibration workflow—as deprecated/);
+  assert.match(report, /real compiler quantization plumbing/);
+  assert.ok((report.match(/```mermaid/g) ?? []).length >= 8);
   assert.equal(publishedReport, report);
 });
 

@@ -199,20 +199,23 @@ that visible.
 - **Status:** `EXPERIMENT`
 - **Detailed Q&A:** [Discussion chain 02 — Transformer on Blackhole
   optimization](./DISCUSSION_TRANSFORMER_BLACKHOLE_OPTIMIZATION.md)
-- **Question:** How do prefill and decode optimization decisions flow from the
-  TTNN model through device operations into TT-Metal kernels?
-- **Hypothesis:** Separating modes, stabilizing shapes/layouts and profiling the
-  warm path will expose a smaller useful tuning surface than rewriting kernels
-  first.
+- **Question:** How do prefill and decode optimization decisions flow through
+  either handwritten TTNN or the current TT-Forge/TT-MLIR compiler route into
+  TT-Metal kernels?
+- **Hypothesis:** Separating the two entry routes, stabilizing shapes/layouts and
+  profiling the warm path will expose a smaller useful tuning surface than
+  rewriting kernels first.
 - **Correctness gate:** One-block PCC plus end-to-end token/perplexity criteria
   defined before the performance sweep.
 - **Evidence available:** Model, attention, MLP, matmul and SDPA paths pinned to
   `tt-metal@50a82f835593512c4176546b4af68d7e91315a86`; logic and code reviews are
-  included in the detailed page.
+  included in the detailed page. The current TT-Forge/TT-MLIR architecture and
+  the reviewed release's distinct dependency pins are recorded separately.
 - **Evidence still needed:** Exact checkpoint, Blackhole SKU/mesh, shape
   distribution, warm profiler reports and completed before/after ledger.
-- **Next experiment:** Fill the model contract, run accuracy and warm
-  performance baselines, then profile prefill and decode separately.
+- **Next experiment:** Choose and pin either the handwritten TTNN or compiler
+  entry route, run accuracy and warm performance baselines, then profile prefill
+  and decode separately.
 - **Possible destination:** a maintained Transformer optimization chapter after
   the hardware evidence gates pass.
 

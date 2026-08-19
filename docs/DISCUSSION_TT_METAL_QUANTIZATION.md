@@ -48,6 +48,9 @@ programming description.
 | Blackhole LLK contains real INT8 configuration machinery | [`ckernel_defs.h:279–284`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/tt-llk/tt_llk_blackhole/common/inc/ckernel_defs.h#L279-L284), [`llk_math_common.h:33–56`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/tt-llk/tt_llk_blackhole/llk_lib/llk_math_common.h#L33-L56) |
 | MXFP4 remains a low-level, architecture-specific experiment in this source | [`tile.cpp:70–100`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/data_format/tile.cpp#L70-L100), [Quasar/DFB MXFP4 test](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tests/tt_metal/tt_metal/llk/test_mxfp4_typecast.cpp#L31-L192), [`DataFormat` legality warning](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/api/tt-metalium/tt_backend_api_types.hpp#L18-L56) |
 | A performance claim requires device/host profiling rather than byte-count inference | [official Metalium tools index](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html) |
+| PTQ measures a trained model; QAT fine-tunes while simulating quantization | [official PyTorch quantization practice](https://pytorch.org/blog/quantization-in-practice/), [official PyTorch QAT mechanism](https://pytorch.org/blog/quantization-aware-training/) |
+| Static activation calibration uses representative samples to derive clipping thresholds and quantization parameters | [PyTorch observers/calibration](https://pytorch.org/blog/quantization-in-practice/), [NVIDIA TensorRT calibration contract](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/inference-library/work-quantized-types.html#post-training-quantization-using-calibration) |
+| Min-max, percentile and entropy/KL are threshold-selection policies—not device-kernel implementations | [NVIDIA TensorRT entropy and percentile calibrators](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/inference-library/work-quantized-types.html#post-training-quantization-using-calibration), [pinned TTNN linear binding](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/matmul/matmul_nanobind.cpp#L824-L898) |
 
 ## Three meanings of quantization
 
@@ -315,6 +318,270 @@ flowchart TD
     C -->|yes| A[Accept + add regression + record dtype matrix]
 ```
 
+## PTQ, QAT and calibration question chain
+
+This section describes **affine integer quantization**. It must not be silently
+applied to Tenstorrent BFP8/BFP4. Those block-floating formats use shared
+exponents and the TT-Transformers precision policy described above; they do not
+use an affine integer zero point in the same way.
+
+### Question 1 — what are PTQ and QAT?
+
+**Post-training quantization (PTQ)** begins with an already trained floating-
+point model. It measures weights and, for static activation quantization,
+representative activations; chooses ranges and quantization parameters; then
+converts the model without updating the original weights through full training.
+It is normally the first experiment because it is fast and comparatively cheap.
+
+**Quantization-aware training (QAT)** prepares the floating model with fake-
+quantization modules or functions. During the forward pass, values are clipped,
+rounded to the target integer grid and dequantized so training sees the expected
+deployment error. The trainable weights remain floating point. The rounding
+operation has no useful ordinary derivative, so QAT commonly uses a
+straight-through estimator during back-propagation. After fine-tuning, the model
+is converted to the same kind of deployment representation targeted by PTQ.
+
+The official [PyTorch quantization practice guide](https://pytorch.org/blog/quantization-in-practice/)
+describes static PTQ and calibration. The official
+[PyTorch QAT guide](https://pytorch.org/blog/quantization-aware-training/)
+shows the `prepare` → fake-quantized forward/training → `convert` mechanism and
+why QAT can recover quality that PTQ loses.
+
+| Property | PTQ | QAT |
+|---|---|---|
+| weights updated? | no | yes, during a fine-tuning phase |
+| representative data? | required for static activation calibration | training/fine-tuning data required; observers may also collect ranges |
+| quantization in forward pass | observers first, real conversion afterward | simulated with fake quantization during fine-tuning |
+| cost | low | higher |
+| best first use | 8-bit or tolerant layers/models | low-bit or accuracy-sensitive model that fails PTQ |
+
+```mermaid
+flowchart TD
+    F[Trained floating model] --> D{Does PTQ meet quality?}
+    D -->|try PTQ| O[Insert observers]
+    O --> C[Representative calibration]
+    C --> T[Choose clipping thresholds]
+    T --> P[Freeze scales and zero-points]
+    P --> V[Convert and validate]
+    V --> Q{Quality gate passes?}
+    Q -->|yes| B[Prove backend legality and profile]
+    Q -->|no| A[Prepare QAT with deployment-faithful fake quant]
+    A --> R[Fine-tune and validate]
+    R --> X[Convert to deployment representation]
+    X --> B
+```
+
+### Question 2 — why is calibration needed?
+
+A trained weight tensor is fixed, so a simple weight-only scheme can measure its
+range directly. Activations are different: their distributions depend on input
+tokens, prompt lengths, attention masks, cache state, layer position and model
+behavior. Static activation quantization therefore needs representative samples
+to predict the range that the deployed model will see.
+
+Calibration runs the unconverted model over those samples while **observers**
+collect per-tensor, per-channel or per-group extrema or histograms. It then:
+
+1. estimates a representative numerical distribution;
+2. chooses lower and upper clipping thresholds;
+3. derives the scale and, for asymmetric affine quantization, the zero point;
+4. freezes those quantization parameters for conversion/export.
+
+Calibration does **not** train the weights, prove model quality, select the
+fastest kernel, or create hardware support for a missing operator. Dynamic
+activation quantization is an alternative: it calculates activation parameters
+at runtime, avoiding the offline activation-calibration pass but adding runtime
+work. The distinction is described in the
+[PyTorch guide](https://pytorch.org/blog/quantization-in-practice/).
+
+Representative means matching the deployment distribution—not using as much
+data as possible. For an LLM, stratify samples by prompt length, language/domain,
+prefill/decode mode, batch or active-user count, and long-context/cache behavior.
+Keep a separate evaluation set so threshold selection is not also the final
+quality proof.
+
+```mermaid
+flowchart LR
+    A[Representative prompts] --> O[Observers]
+    O --> M[Min/max or histogram per chosen granularity]
+    M --> T[Threshold selector]
+    T --> S[Scale s]
+    T --> Z[Zero-point z when asymmetric]
+    S --> E[Exported quantization contract]
+    Z --> E
+    E --> K{Exact device kernel supports it?}
+    K -->|no| R[Change scheme or implement custom op]
+    K -->|yes| V[Independent quality validation]
+```
+
+### Question 3 — what mapping does calibration produce?
+
+For a common affine mapping:
+
+```text
+q     = clamp(round(x / s) + z, qmin, qmax)
+x_hat = s × (q - z)
+```
+
+Here `x` is a real value, `q` is the stored integer, `x_hat` is the reconstructed
+value, `s > 0` is the scale and `z` is the integer code that represents real
+zero. Exact tie-breaking, saturation and narrow-range rules are part of the
+deployment contract and must match between calibration/QAT and the device
+kernel.
+
+**Asymmetric affine quantization** uses both observed bounds:
+
+```text
+s = (xmax - xmin) / (qmax - qmin)
+z = clamp(round(qmin - xmin / s), qmin, qmax)
+```
+
+It makes better use of the integer codes for a shifted or skewed activation
+distribution, but the kernel must account for a non-zero `z`.
+
+**Symmetric affine quantization** centers the mapping on zero:
+
+```text
+a = max(abs(xmin), abs(xmax))
+s = a / qmax_abs
+z = 0
+```
+
+It simplifies zero-point behavior and is common for signed weights. It can waste
+codes when the distribution is strongly skewed. With signed INT8, many practical
+implementations use an effective symmetric magnitude of 127, even though the
+container range is `[-128, 127]`; always copy the backend's exact convention.
+PyTorch's official guide gives the corresponding affine and symmetric mapping
+definitions.
+
+### Question 4 — what do min-max, percentile and KL calibration do?
+
+These policies choose clipping thresholds. The affine formulas above derive
+scale and zero point **after** the thresholds are selected.
+
+| Method | Mechanism | Advantage | Main risk |
+|---|---|---|---|
+| min-max | preserve the smallest and largest observed values | fast, simple baseline | a rare outlier stretches the scale and makes common values coarse |
+| percentile | clip values outside a chosen percentile, for example a rare tail | deliberately trades a few clipped values for finer central resolution | percentile is a hyperparameter and can overfit the calibration set |
+| entropy / KL divergence | scan threshold candidates, quantize/reconstruct histogram bins, choose the candidate minimizing information divergence | data-driven clipping for histogram-based static PTQ | depends on histogram bins, sample representativeness and backend implementation |
+
+NVIDIA's official
+[TensorRT calibration documentation](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/inference-library/work-quantized-types.html#post-training-quantization-using-calibration)
+documents entropy/KL and percentile-based calibrators. This is a reference for
+the calibration algorithms, **not evidence that TTNN consumes a TensorRT cache
+or implements the same histogram details**. TensorRT 10.x also marks implicit
+quantization—and therefore this legacy calibration workflow—as deprecated in
+favor of explicit Q/DQ graphs. Use the calibrator descriptions as algorithmic
+background, not as a recommended Tenstorrent deployment API.
+
+A simplified KL threshold search is:
+
+```text
+collect a high-resolution reference histogram P
+for each candidate clipping threshold t:
+    clip P to [-t, t] (or [low_t, high_t])
+    merge bins into the number of available quantized codes
+    expand the merged histogram back to reference-bin resolution as Q_t
+    score D_KL(P_t || Q_t)
+choose the t with the smallest score
+derive s and z from t
+```
+
+Do not compare a KL score across incompatible binning implementations. The final
+selection still requires layer/logit/model-quality validation.
+
+### Question 5 — which granularity should I use?
+
+| Granularity | Parameters | Typical benefit | Cost/requirement |
+|---|---|---|---|
+| per-tensor | one range and qparams for the entire tensor | simplest metadata and kernel | sensitive to channel outliers |
+| per-channel | independent qparams, commonly by weight output channel | much lower weight error when channel ranges differ | kernel must load/apply channel scales |
+| per-group | one set of qparams for a fixed group of weights | compromise common in very-low-bit LLM weights | group layout and scale ownership must match packing/kernel |
+| dynamic per-token activation | range calculated for each token/vector at runtime | adapts to activation outliers without a frozen static range | reduction, scale calculation and synchronization add runtime work |
+
+A common hypothesis—not a universal rule—is symmetric per-channel or per-group
+weights plus per-tensor asymmetric static activations, or dynamic per-token
+activations when the backend has a fused path. Treat it as a candidate to test,
+not a Tenstorrent API promise.
+
+### Question 6 — how do I implement affine quantization for a Tenstorrent LLM?
+
+The implementation must cross two independent boundaries:
+
+1. **numerical policy:** PTQ/QAT, granularity, thresholds, scale, zero point,
+   rounding and accumulator behavior;
+2. **device legality:** the exact TTNN operation, program factory, circular-
+   buffer formats, LLK instructions, accumulator and packer support that policy.
+
+At the pinned source revision, the audited `models/tt_transformers`, `ttnn` and
+`tt_metal` paths do not expose a model-level PTQ/QAT calibration pipeline. The
+generic [`ttnn.linear` binding](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/matmul/matmul_nanobind.cpp#L824-L898)
+lists BF16, BFP8_B, BFP4_B and FP32 tile inputs, not affine INT8. Therefore:
+
+- the **current practical LLM path** is the source's BF16 → BFP8 → selective
+  BFP4 role/layer sweep;
+- an **affine INT8 research path** needs frontend calibration/QAT plus a device
+  operation whose exact quantization contract is proven or newly implemented.
+
+For a compiler-ingested model there is an additional IR boundary between those
+two proof classes. The TT-MLIR commit pinned by the reviewed TT-Forge
+development release contains concrete
+StableHLO uniform Q/DQ conversion in
+[`StableHLOToTTIRPatterns.cpp:1307–1385`](https://github.com/tenstorrent/tt-mlir/blob/71046369d603b97fd6a8dd8b947ca8588ac2a74f/lib/Conversion/StableHLOToTTIR/StableHLOToTTIRPatterns.cpp#L1307-L1385)
+and exposes Q/DQ, target-bit-width, experimental BFP weight and experimental BFP
+KV-cache controls in
+[`TTNNPipelines.h:306–430`](https://github.com/tenstorrent/tt-mlir/blob/71046369d603b97fd6a8dd8b947ca8588ac2a74f/include/ttmlir/Dialect/TTNN/Pipelines/TTNNPipelines.h#L306-L430).
+This is real compiler quantization plumbing, but it is not proof that an
+arbitrary affine INT8 `linear` graph reaches a legal or performant Blackhole
+kernel. Check the frontend pattern, emitted TTIR/TTNN IR, operation validation
+and final TT-Metal implementation separately.
+
+Use this order:
+
+1. Freeze the checkpoint, prompts/context distribution, Blackhole target,
+   quality budget and the exact operation to optimize.
+2. Save the floating/BF16 layer outputs, logits, tokens, perplexity/task score,
+   TTFT and decode throughput.
+3. Choose PTQ or QAT; weight-only, static or dynamic activations; bit width;
+   granularity; and symmetric/asymmetric mapping.
+4. Instrument a frontend such as PyTorch/torchao with observers or fake-
+   quantization that matches the intended kernel.
+5. For static PTQ, run representative calibration and compare min-max,
+   percentile and KL thresholds. For QAT, fine-tune under the final clipping,
+   rounding and granularity semantics.
+6. Freeze qparams and export packed weights plus explicit Q/DQ boundaries.
+7. Map them only to a supported TTNN operation—or a custom operation—that
+   proves the same input/output formats, qparam ownership, accumulation,
+   saturation and rounding behavior.
+8. Validate layer tensors, logits/tokens, perplexity/task quality and long-
+   context decode on data excluded from calibration/fine-tuning.
+9. Warm-profile quantization overhead, DRAM/L1/NoC traffic, TTFT and ms/token.
+10. Accept only when both quality and repeated end-to-end performance pass.
+
+```mermaid
+flowchart TD
+    N[Frontend numerical contract] --> P[Packed weights + frozen qparams]
+    P --> O{Supported TTNN operation?}
+    O -->|yes| V[Run operation validators]
+    O -->|no| C[Design custom TTNN operation]
+    C --> F[Program factory]
+    F --> B[Reader / compute / writer CB formats]
+    B --> L[LLK math + accumulator + packer]
+    L --> V
+    V --> U[Unit oracle for rounding, clipping and overflow]
+    U --> M[Layer / graph / model quality]
+    M --> R[Warm device profile]
+```
+
+The existing [`ttnn.quantize`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/eltwise/quantization/quantization.cpp#L179-L204),
+[`requantize`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/eltwise/quantization/quantization.cpp#L317-L341)
+and [`dequantize`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/eltwise/quantization/quantization.cpp#L468-L485)
+can be used where their checked contracts fit. They do not by themselves supply
+an INT8 linear kernel.
+
+> **Key rule:** calibration chooses a numeric mapping; it does not create an
+> unsupported kernel.
+
 ## Affine integer quantization utilities
 
 The elementwise operations are useful, but their contracts must be stated
@@ -426,6 +693,8 @@ Blackhole LLM can be switched to MXFP4 through a normal TTNN dtype argument.
 | “Output PCC proves model quality.” | long-context/token error can accumulate | layer, logits/tokens and perplexity/task gates |
 | “MXFP4 appears in `DataFormat`, so Blackhole supports it.” | the enum is a cross-generation union | require architecture and operation legality |
 | “INT8 LLK support means generic INT8 LLM matmul exists.” | program factory, scaling, shapes and API are missing from the proof | call it low-level capability until the full chain is validated |
+| “Calibration makes the model INT8-ready.” | calibration chooses thresholds and qparams, not a device operator | separately prove the TTNN operation and low-level kernel contract |
+| “TT-MLIR has Q/DQ conversion, so the model has an INT8 Blackhole kernel.” | IR recognition, operation legality and backend implementation are separate gates | inspect emitted IR and prove the exact operator at the release-pinned dependency set |
 
 ## Code review conclusions
 

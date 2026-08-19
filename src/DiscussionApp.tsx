@@ -136,10 +136,10 @@ const topics: readonly DiscussionTopic[] = [
     track: "optimization",
     status: "experiment",
     title: "Optimize a Transformer on Blackhole",
-    question: "How do prefill and decode decisions flow from the TTNN model into TT-Metal kernels?",
-    hypothesis: "Separating modes, stabilizing layouts and profiling each source layer will expose a smaller useful tuning surface than rewriting kernels first.",
-    evidence: "Pinned TT-Transformers, matmul and SDPA paths plus an unfilled hardware measurement ledger.",
-    next: "Fill the model contract, run accuracy and warm performance baselines, then profile prefill and decode separately.",
+    question: "How do prefill and decode decisions flow through either handwritten TTNN or the current TT-Forge/TT-MLIR compiler route into TT-Metal kernels?",
+    hypothesis: "Separating the two entry routes, stabilizing layouts and profiling each source layer will expose a smaller useful tuning surface than rewriting kernels first.",
+    evidence: "Pinned TT-Transformers, matmul and SDPA paths plus the current TT-Forge/TT-MLIR architecture and release dependency boundary.",
+    next: "Choose one pinned entry route, run accuracy and warm performance baselines, then profile prefill and decode separately.",
     destination: "Transformer optimization chapter",
     page: "./discussion-transformer-blackhole-optimization.html",
   },
@@ -230,7 +230,7 @@ function DiscussionApp() {
           <div className="discussion-heading inverse"><span>01 / DISCUSSION QUEUE</span><h2>Filter the questions.<br/>Keep the context.</h2><p>Debugging asks where and why execution failed. Optimization asks what can change while correctness remains intact.</p></div>
           <div className="case-chain-list">
             <a className="case-chain" href="./discussion-blackhole-bringup.html"><span>CASE CHAIN 01 · BLACKHOLE BRING-UP</span><h3>Prove the BRISC/NCRISC boundary before blaming the compiler.</h3><p>Eight decisions connect Watcher waypoints, binary readback, operation entry, compiler A/B and regression closure.</p><i>Open detailed Q&amp;A →</i></a>
-            <a className="case-chain transformer" href="./discussion-transformer-blackhole-optimization.html"><span>CASE CHAIN 02 · TRANSFORMER OPTIMIZATION</span><h3>Optimize the path, not the model name.</h3><p>Split prefill and decode, follow TTNN into TT-Metal, and keep every speed claim behind a quality gate.</p><i>Open detailed Q&amp;A →</i></a>
+            <a className="case-chain transformer" href="./discussion-transformer-blackhole-optimization.html"><span>CASE CHAIN 02 · TRANSFORMER OPTIMIZATION</span><h3>Optimize the path, not the model name.</h3><p>Split prefill and decode; compare handwritten TTNN with TT-Forge/TT-MLIR; follow the measured path into TT-Metal.</p><i>Open detailed Q&amp;A →</i></a>
             <a className="case-chain" href="./discussion-blackhole-synchronization.html"><span>SUBPAGE 03 · BLACKHOLE SYNCHRONIZATION</span><h3>Fence is not one fence.</h3><p>Separate compiler, RISC-V, NoC, L1 semaphore, CB and internal Tensix hardware-wait contracts before debugging a race.</p><i>Open field guide →</i></a>
             <a className="case-chain presentation" href="./discussion-presentation.html"><span>SUBPAGE 04 · 30-MINUTE PRESENTATION</span><h3>Tell the research story without outrunning the evidence.</h3><p>Copy-ready slides, speaker notes, two small boot/launch diagrams and defensible answers to likely technical questions.</p><i>Open presentation room →</i></a>
             <a className="case-chain quantization" href="./discussion-quantization.html"><span>SUBPAGE 05 · LLM QUANTIZATION</span><h3>An enum is not an operator promise.</h3><p>Choose BF16, BFP8, BFP4, integer or MX paths by tensor role, API legality, quality budget and measured traffic.</p><i>Open precision lab →</i></a>

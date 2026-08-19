@@ -16,6 +16,25 @@ type DecisionStep = {
 
 const revision = "50a82f835593512c4176546b4af68d7e91315a86";
 const sourceRoot = `https://github.com/tenstorrent/tt-metal/blob/${revision}`;
+const ttMlirRevision = "71046369d603b97fd6a8dd8b947ca8588ac2a74f";
+const ttMlirSourceRoot = `https://github.com/tenstorrent/tt-mlir/blob/${ttMlirRevision}`;
+const forgeSnapshot = {
+  release: "1.5.0.dev20260819000359",
+  ttXla: "2ddaf4bc36f7",
+  ttMlir: ttMlirRevision.slice(0, 12),
+  ttMetal: "5beed318d0f0",
+} as const;
+const forgeLinks = {
+  repo: "https://github.com/tenstorrent/tt-forge",
+  docs: "https://docs.tenstorrent.com/forge/index.html",
+  releases: "https://github.com/tenstorrent/tt-forge/releases",
+  mlir: "https://github.com/tenstorrent/tt-mlir",
+  mlirDialects: "https://docs.tenstorrent.com/tt-mlir/dialects-overview.html",
+  optimizer: "https://docs.tenstorrent.com/tt-mlir/specs/ttnn-optimizer.html",
+  cacheLowering: `${ttMlirSourceRoot}/lib/Conversion/StableHLOToTTIR/StableHLOToTTIRPatterns.cpp#L8449-L8641`,
+  quantLowering: `${ttMlirSourceRoot}/lib/Conversion/StableHLOToTTIR/StableHLOToTTIRPatterns.cpp#L1307-L1385`,
+  optimizerPipeline: `${ttMlirSourceRoot}/lib/Dialect/TTNN/Pipelines/TTNNPipelines.cpp#L100-L158`,
+} as const;
 
 const decisions: readonly DecisionStep[] = [
   {
@@ -190,7 +209,7 @@ function TransformerOptimizationApp() {
       <header className="transformer-topbar">
         <a className="transformer-brand" href="./index.html"><b>TT•SIM</b><span>discussion chain 02</span></a>
         <nav aria-label="Page navigation">
-          <a href="#decision">Decisions</a><a href="#code">TTNN → Metal</a><a href="#measure">Measurements</a>
+          <a href="#decision">Decisions</a><a href="#code">TTNN → Metal</a><a href="#compiler">Forge → MLIR</a><a href="#measure">Measurements</a>
           <a className="transformer-back" href="./discussion.html">← Discussion</a>
         </nav>
       </header>
@@ -270,8 +289,26 @@ function TransformerOptimizationApp() {
           </div>
         </section>
 
+        <section id="compiler" className="compiler-section-transformer">
+          <div className="transformer-section-heading light"><span>05 / CURRENT COMPILER BRANCH</span><h2>Forge compiles.<br/>TTNN hand-tunes.</h2><p>The official project is <b>TT-Forge</b>, not “tt-force.” Its repository is the umbrella for the end-to-end compiler projects; TT-MLIR is the core middle/backend compiler. This branch complements—not replaces—the pinned handwritten TTNN path above.</p></div>
+
+          <div className="compiler-release-strip"><div><span>LATEST REVIEWED DEV RELEASE · 19 AUG 2026</span><strong>{forgeSnapshot.release}</strong></div><dl><div><dt>TT-XLA</dt><dd>{forgeSnapshot.ttXla}</dd></div><div><dt>TT-MLIR</dt><dd>{forgeSnapshot.ttMlir}</dd></div><div><dt>TT-METAL</dt><dd>{forgeSnapshot.ttMetal}</dd></div></dl><a href={forgeLinks.releases}>Release evidence ↗</a></div>
+
+          <div className="execution-paths">
+            <article><header><span>A / HANDWRITTEN MODEL PATH</span><b>Audited in this page</b></header><div><i>PyTorch weights</i><em>↓</em><i><code>models/tt_transformers</code></i><em>↓</em><i>TTNN operations + configs</i><em>↓</em><i>TT-Metal program factories</i><em>↓</em><i>RISC kernels on Blackhole</i></div><p>Use this path when modifying the existing TTNN Transformer, its KV-cache/SDPA calls, layouts, precision policies or trace replay.</p></article>
+            <article><header><span>B / CURRENT COMPILER PATH</span><b>Latest upstream architecture</b></header><div><i>PyTorch / JAX</i><em>↓ TT-XLA</em><i>StableHLO</i><em>↓</em><i>TTIR + graph passes</i><em>↓ backend selection</em><i>TTNN-IR / TTKernel-IR / TTMetal-IR</i><em>↓</em><i>TTNN or TT-Metalium</i></div><p>ONNX, TensorFlow and PaddlePaddle enter through TT-Forge-ONNX. The backend IRs are alternatives, not one mandatory serial chain. Use this path when the model is compiler-ingested or the change belongs in fusion, layout, sharding or lowering.</p></article>
+          </div>
+
+          <div className="compiler-lever-matrix"><div className="compiler-lever-head"><b>TRANSFORMER LEVER</b><b>TT-FORGE / TT-MLIR RESPONSIBILITY</b><b>TTNN / TT-METAL RESPONSIBILITY</b><b>EVIDENCE GATE</b></div><div><span>01 · KV CACHE + ATTENTION</span><p>For recognized frontend forms, preserve cache/update and SDPA semantics; reject unsupported forms clearly.</p><p>Execute paged cache update, chunked SDPA and reader/compute/writer kernels.</p><p>Exact graph lowers + context-bucket traffic + long-decode token agreement.</p></div><div><span>02 · LAYOUT + SHARDING</span><p>Propagate legal layouts, select op configs and manage spills using the target system description.</p><p>Honor concrete memory configs, core grids, CB capacity and NoC ownership.</p><p>Fewer legal conversions/spills in compiler and device traces.</p></div><div><span>03 · QUANTIZATION</span><p>Preserve Q/DQ and dtype semantics for supported patterns; verify bit width and operator lowering.</p><p>Provide legal storage, math, accumulation, pack/unpack and conversion kernels.</p><p>Exact operator lowers + layer/model quality + measured warm traffic/latency.</p></div><div><span>04 · FUSION + DISPATCH</span><p>Recognize graph patterns and remove materialized intermediates/layout repairs.</p><p>Cache programs, capture stable traces, dispatch and run the fused implementation.</p><p>Reduced dispatch/allocation/bytes—not only a lower IR-op count.</p></div></div>
+
+          <div className="compiler-decision"><span>CHOOSE THE OWNER</span><p><b>Compiler-ingested model?</b> Inspect StableHLO → TTIR → selected backend IR and TT-MLIR passes first. <b>Existing handwritten TTNN model?</b> Profile the TTNN operation/configuration first. <b>Both paths fail at the same minimized operation?</b> Descend to the shared TT-Metal/kernel contract.</p><div><a href={forgeLinks.repo}>Current TT-Forge architecture ↗</a><a href={forgeLinks.docs}>Official Forge overview ↗</a><a href={forgeLinks.mlir}>TT-MLIR repository ↗</a><a href={forgeLinks.mlirDialects}>Dialect definitions ↗</a><a href={forgeLinks.cacheLowering}>Pinned cache lowering ↗</a><a href={forgeLinks.quantLowering}>Pinned Q/DQ lowering ↗</a><a href={forgeLinks.optimizerPipeline}>Pinned optimizer pipeline ↗</a><a href={forgeLinks.optimizer}>TTNN optimizer notes ↗</a></div></div>
+
+          <p className="compiler-capability-warning"><b>Capability boundary.</b> The pinned TT-MLIR source contains cache-update, SDPA and Q/DQ conversion machinery, but a conversion pattern is not a model-support guarantee. Verify that the exact frontend graph matches, inspect emitted IR, pass operation validation, and run the target kernel. The optimizer document’s numerical memory examples are explicitly Wormhole values; use the Blackhole system descriptor and backend for Blackhole budgets.</p>
+          <p className="compiler-revision-warning"><b>Revision boundary.</b> The manual path above is audited at <code>tt-metal@{revision.slice(0, 12)}</code>. The reviewed TT-Forge development release pins <code>tt-metal@{forgeSnapshot.ttMetal}</code>. Do not mix those findings into one source claim without re-running the audit at the release-pinned dependency set.</p>
+        </section>
+
         <section id="measure" className="measurement-section">
-          <div className="transformer-section-heading light"><span>05 / MEASUREMENT LEDGER</span><h2>No invented<br/>speedup.</h2><p>These cells are intentionally blank. Fill them from the exact model and Blackhole run, one changed variable per row.</p></div>
+          <div className="transformer-section-heading light"><span>06 / MEASUREMENT LEDGER</span><h2>No invented<br/>speedup.</h2><p>These cells are intentionally blank. Fill them from the exact model and Blackhole run, one changed variable per row.</p></div>
           <div className="measurement-table" role="table" aria-label="Transformer optimization measurement ledger">
             <div className="measurement-row head" role="row"><b>RUN</b><b>CHANGE</b><b>PREFILL</b><b>DECODE</b><b>QUALITY</b><b>DECISION</b></div>
             {measurementRows.map((row) => <div className="measurement-row" role="row" key={row[0]}>{row.map((cell, index) => index === 0 ? <code key={index}>{cell}</code> : <span key={index}>{cell}</span>)}</div>)}
@@ -288,11 +325,11 @@ python -m tracy -p -r -v -m pytest \\
 
         <section className="review-section-transformer">
           <div className="review-card logic"><span>LOGIC REVIEW</span><h2>Order is a dependency.</h2><ol><li>Correctness before precision.</li><li>Stable shapes before trace.</li><li>Layout chain before isolated op speed.</li><li>Operation proof before custom kernel.</li><li>Hardware data before performance claim.</li></ol></div>
-          <div className="review-card code"><span>CODE REVIEW</span><h2>The source already optimizes.</h2><ol><li>Prefill and decode branch throughout the stack.</li><li>QKV, activation×multiply and cache update have fused paths.</li><li>Blackhole-specific cutoffs, grids and sharding are explicit.</li><li>Program configs alter cores, CBs, multicast and runtime args.</li><li>FIXMEs and SKU workarounds are not universal specifications.</li></ol></div>
+          <div className="review-card code"><span>CODE REVIEW</span><h2>Two paths, one device.</h2><ol><li>Prefill and decode branch throughout the stack.</li><li>TT-Forge routes PyTorch/JAX through TT-XLA and TT-MLIR.</li><li>The handwritten Transformer goes directly through TTNN.</li><li>Both ultimately depend on legal TTNN/TT-Metal operation contracts.</li><li>Release-pinned and local source revisions must not be mixed.</li></ol></div>
         </section>
 
         <section className="transformer-download">
-          <div><span>REPEATABLE RECORD / CHAIN 02</span><h2>The full guide includes commands, nine small Mermaid flows, source anchors, logic review, code review and the blank experiment ledger.</h2></div>
+          <div><span>REPEATABLE RECORD / CHAIN 02</span><h2>The full guide includes both TTNN and TT-Forge/TT-MLIR paths, small Mermaid flows, source anchors, reviews and the blank experiment ledger.</h2></div>
           <div><a href="./DISCUSSION_TRANSFORMER_BLACKHOLE_OPTIMIZATION.md">Read Markdown guide ↗</a><a href="https://github.com/buicongnguyen/tt-sim/blob/main/docs/DISCUSSION_TRANSFORMER_BLACKHOLE_OPTIMIZATION.md">Open source on GitHub ↗</a></div>
         </section>
       </main>
