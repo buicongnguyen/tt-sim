@@ -491,14 +491,14 @@ function ArchitectureInterviewApp() {
     <div className="architect-page">
       <header className="architect-topbar">
         <a className="architect-brand" href="./index.html"><b>TT•SIM</b><span>architecture interview workbench</span></a>
-        <nav aria-label="Page navigation"><a href="#framework">Framework</a><a href="#prep-map">13-topic plan</a><a href="#evidence">My evidence</a><a href="#scenarios">Scenarios</a><a href="#question-bank">17 prompts</a><a className="architect-back" href="./discussion.html">← Discussion</a></nav>
+        <nav aria-label="Page navigation"><a href="#framework">Framework</a><a href="#prep-map">13-topic plan</a><a href="#evidence">My evidence</a><a href="#scenarios">Scenarios</a><a href="#question-bank">17 prompts</a><a href="./discussion-architecture-interview-qa.html">50 Q&amp;A</a><a className="architect-back" href="./discussion.html">← Discussion</a></nav>
       </header>
 
       <main>
         <section className="architect-hero">
           <div className="architect-hero-index"><span>DISCUSSION</span><strong>07</strong><small>NPU<br/>ARCHITECTURE</small></div>
           <article><p>BOTTLENECK → EVIDENCE → OPTIONS → TRADE-OFFS → RECOMMENDATION → VALIDATION</p><h1>Do not guess<br/>the resource.<br/><em>Prove the limit.</em></h1><div className="architect-thesis"><b>Interview thesis</b><p>A strong answer does not list optimizations. It defines the workload and constraint, identifies the first limiting resource, compares real alternatives under PPA/cost/quality, recommends one, and states how the decision will be falsified.</p></div></article>
-          <aside><span>SOURCE BASELINE</span><code>{commit.slice(0, 12)}</code><p>General NPU reasoning is mapped to pinned TT-Metal/TTNN contracts. Professional claims are limited to the résumé and portfolio evidence below; product measurements still require a named device and workload.</p><a href="./DISCUSSION_ARCHITECTURE_INTERVIEW.md">Copy complete answers ↗</a><a className="hero-secondary-link" href={links.portfolio}>Open portfolio ↗</a></aside>
+          <aside><span>SOURCE BASELINE</span><code>{commit.slice(0, 12)}</code><p>General NPU reasoning is mapped to pinned TT-Metal/TTNN contracts. Professional claims are limited to the résumé and portfolio evidence below; product measurements still require a named device and workload.</p><a href="./discussion-architecture-interview-qa.html">Read 50 questions + answers ↗</a><a className="hero-secondary-link" href="./DISCUSSION_ARCHITECTURE_INTERVIEW.md">Copy complete answers ↗</a><a className="hero-tertiary-link" href={links.portfolio}>Open portfolio ↗</a></aside>
         </section>
 
         <section id="framework" className="architect-section framework-section">
@@ -558,6 +558,7 @@ function ArchitectureInterviewApp() {
 
         <section id="question-bank" className="architect-section question-section">
           <header><span>05 / SEVENTEEN RECALL PROMPTS</span><h2>Start with the branch.<br/>Not the buzzword.</h2><p>Cover the answer, speak for 45 seconds, then reveal the first move. Score one point for each BETRV element you make explicit; target six of six.</p></header>
+          <a className="question-reader-link" href="./discussion-architecture-interview-qa.html"><span>FULL READING ROOM</span><b>Continue with 50 principal-level questions, layered answers, proof gates and memory lines.</b><i>Open 50 Q&amp;A →</i></a>
           <ol className="question-grid">{principalPrompts.map(([question, firstMove], index) => <li key={question}><span>{String(index + 1).padStart(2, "0")}</span><h3>{question}</h3><details><summary>Reveal first move</summary><p>{firstMove}</p></details></li>)}</ol>
         </section>
 
@@ -580,7 +581,7 @@ function ArchitectureInterviewApp() {
         </section>
       </main>
 
-      <footer className="architect-footer"><div><b>TT•SIM · DISCUSSION SUBPAGE 07</b><p>Principal-level NPU interview plan from owned evidence to falsifiable decisions.</p></div><a href={links.portfolio}>Portfolio ↗</a><a href={links.resume}>Public résumé ↗</a><a href="./discussion-presentation.html">Presentation room →</a><a href="./discussion-transformer-blackhole-optimization.html">Transformer chain →</a><a href="./discussion-quantization.html">Quantization →</a><a href="./discussion.html">Discussion →</a></footer>
+      <footer className="architect-footer"><div><b>TT•SIM · DISCUSSION SUBPAGE 07</b><p>Principal-level NPU interview plan from owned evidence to falsifiable decisions.</p></div><a href="./discussion-architecture-interview-qa.html">50 Q&amp;A →</a><a href={links.portfolio}>Portfolio ↗</a><a href={links.resume}>Public résumé ↗</a><a href="./discussion-presentation.html">Presentation room →</a><a href="./discussion-quantization.html">Quantization →</a><a href="./discussion.html">Discussion →</a></footer>
     </div>
   );
 }

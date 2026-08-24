@@ -39,6 +39,7 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("debug-low-level-kernel-flow.html", root));
   await access(new URL("DEBUG_LOW_LEVEL_KERNEL_FLOW.md", root));
   await access(new URL("discussion-architecture-interview.html", root));
+  await access(new URL("discussion-architecture-interview-qa.html", root));
   await access(new URL("DISCUSSION_ARCHITECTURE_INTERVIEW.md", root));
 });
 
@@ -103,6 +104,35 @@ test("publishes the NPU architecture interview workbench", async () => {
   assert.match(guide, /Data parallel[\s\S]*Does not reduce/);
   assert.ok((guide.match(/```mermaid/g) ?? []).length >= 4);
   assert.equal(publishedGuide, guide);
+});
+
+test("publishes the 50-question principal NPU interview reader", async () => {
+  const html = await readFile(new URL("discussion-architecture-interview-qa.html", root), "utf8");
+  const app = await readFile(new URL("../src/ArchitectureInterviewQAApp.tsx", root), "utf8");
+  const data = await readFile(new URL("../src/architecture-interview-qa-data.ts", root), "utf8");
+  const styles = await readFile(new URL("../src/architecture-interview-qa.css", root), "utf8");
+  const mainApp = await readFile(new URL("../src/App.tsx", root), "utf8");
+  const discussionApp = await readFile(new URL("../src/DiscussionApp.tsx", root), "utf8");
+  assert.match(html, /50 principal-level NPU architecture interview questions/);
+  assert.match(html, /(?:src|href)="\.\/assets\//);
+  assert.match(app, /Fifty questions/);
+  assert.match(app, /Read once/);
+  assert.match(app, /Search 50 interview questions/);
+  assert.match(app, /Expand visible/);
+  assert.match(app, /hidden=\{!isOpen\}/);
+  assert.equal((data.match(/^    id: \d+,/gm) ?? []).length, 50);
+  assert.match(data, /id: 1,/);
+  assert.match(data, /id: 50,/);
+  assert.match(data, /FlashAttention/);
+  assert.match(data, /MinMax|Min-max/);
+  assert.match(data, /CANN/);
+  assert.match(data, /retargeted and validated/);
+  assert.match(data, /Simulate to eliminate/);
+  assert.match(styles, /\.qa-filters/);
+  assert.match(styles, /\.qa-answer\[hidden\]/);
+  assert.match(styles, /@media print/);
+  assert.match(mainApp, /discussion-architecture-interview-qa\.html/);
+  assert.match(discussionApp, /SUBPAGE 08 · 50 QUESTION READER/);
 });
 
 test("publishes the WSL agent and host-to-device trace plan", async () => {

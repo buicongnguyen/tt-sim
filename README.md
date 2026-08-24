@@ -43,6 +43,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - TTNN/TT-Metal LLM quantization guide: <https://buicongnguyen.github.io/tt-sim/discussion-quantization.html>
 - Low-level kernel Mermaid debug flow: <https://buicongnguyen.github.io/tt-sim/debug-low-level-kernel-flow.html>
 - Principal-level NPU interview plan, evidence map and workbench: <https://buicongnguyen.github.io/tt-sim/discussion-architecture-interview.html>
+- Fifty principal-level NPU interview questions and layered answers: <https://buicongnguyen.github.io/tt-sim/discussion-architecture-interview-qa.html>
 
 ## Repository map
 
@@ -83,6 +84,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `discussion-quantization.html` — interactive datatype ledger, model precision flow and copyable quantization experiments
 - `debug-low-level-kernel-flow.html` — rendered Mermaid atlas for low-level worker-kernel debugging
 - `discussion-architecture-interview.html` — interactive NPU architecture trade-off and interview-answer workbench
+- `discussion-architecture-interview-qa.html` — searchable 50-question principal NPU interview reader
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope
