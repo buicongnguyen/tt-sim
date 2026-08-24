@@ -42,6 +42,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - Source-backed 30-minute presentation room: <https://buicongnguyen.github.io/tt-sim/discussion-presentation.html>
 - TTNN/TT-Metal LLM quantization guide: <https://buicongnguyen.github.io/tt-sim/discussion-quantization.html>
 - Low-level kernel Mermaid debug flow: <https://buicongnguyen.github.io/tt-sim/debug-low-level-kernel-flow.html>
+- Principal-level NPU interview plan, evidence map and workbench: <https://buicongnguyen.github.io/tt-sim/discussion-architecture-interview.html>
 
 ## Repository map
 
@@ -69,6 +70,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `docs/DISCUSSION_PRESENTATION_30_MIN.md` — copy-ready 30-minute research/achievement deck, boot flows, speaker notes and Q&A bank
 - `docs/DISCUSSION_TT_METAL_QUANTIZATION.md` — source-audited BFP8/BFP4, integer and MX decision guide for LLM inference
 - `docs/DEBUG_LOW_LEVEL_KERNEL_FLOW.md` — consolidated Mermaid cold-boot, Program-launch, NCRISC-handoff, waypoint and DPRINT flow
+- `docs/DISCUSSION_ARCHITECTURE_INTERVIEW.md` — 13-topic preparation plan, résumé/portfolio evidence map, 17 recall prompts and detailed architecture decisions
 - `scripts/05-architecture-evidence.sh` — reproducible descriptor and architecture-LLK audit
 - `huawei.html` — dedicated Blackhole versus Huawei Ascend Pages route
 - `async-kernels.html` — dedicated asynchronous-kernel and matrix-granularity Pages route
@@ -80,6 +82,7 @@ Expected URL: <https://buicongnguyen.github.io/tt-sim/>
 - `discussion-presentation.html` — interactive presentation room with per-slide copy controls and source-backed boot diagrams
 - `discussion-quantization.html` — interactive datatype ledger, model precision flow and copyable quantization experiments
 - `debug-low-level-kernel-flow.html` — rendered Mermaid atlas for low-level worker-kernel debugging
+- `discussion-architecture-interview.html` — interactive NPU architecture trade-off and interview-answer workbench
 - `.github/workflows/pages.yml` — GitHub Pages deployment
 
 ## Scope

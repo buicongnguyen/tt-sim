@@ -21,6 +21,7 @@ export default defineConfig({
         presentation: fileURLToPath(new URL("./discussion-presentation.html", import.meta.url)),
         quantization: fileURLToPath(new URL("./discussion-quantization.html", import.meta.url)),
         debugLowLevelKernelFlow: fileURLToPath(new URL("./debug-low-level-kernel-flow.html", import.meta.url)),
+        architectureInterview: fileURLToPath(new URL("./discussion-architecture-interview.html", import.meta.url)),
       },
     },
   },

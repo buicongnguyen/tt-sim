@@ -17,6 +17,7 @@ const documents = [
   "DISCUSSION_PRESENTATION_30_MIN.md",
   "DISCUSSION_TT_METAL_QUANTIZATION.md",
   "DEBUG_LOW_LEVEL_KERNEL_FLOW.md",
+  "DISCUSSION_ARCHITECTURE_INTERVIEW.md",
 ];
 
 await mkdir(new URL("../public/", import.meta.url), { recursive: true });

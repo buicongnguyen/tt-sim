@@ -38,6 +38,8 @@ test("builds a GitHub Pages-ready field guide", async () => {
   await access(new URL("DISCUSSION_TT_METAL_QUANTIZATION.md", root));
   await access(new URL("debug-low-level-kernel-flow.html", root));
   await access(new URL("DEBUG_LOW_LEVEL_KERNEL_FLOW.md", root));
+  await access(new URL("discussion-architecture-interview.html", root));
+  await access(new URL("DISCUSSION_ARCHITECTURE_INTERVIEW.md", root));
 });
 
 test("publishes the low-level kernel Mermaid debug flow", async () => {
@@ -62,6 +64,44 @@ test("publishes the low-level kernel Mermaid debug flow", async () => {
   assert.ok(diagrams.every((diagram) => /^(sequenceDiagram|flowchart TD)/.test(diagram)));
   assert.match(guide, /NCRISC does not call BRISC/);
   assert.match(guide, /dprint_server\.cpp/);
+  assert.equal(publishedGuide, guide);
+});
+
+test("publishes the NPU architecture interview workbench", async () => {
+  const html = await readFile(new URL("discussion-architecture-interview.html", root), "utf8");
+  const main = await readFile(new URL("../src/architecture-interview-main.tsx", root), "utf8");
+  const app = await readFile(new URL("../src/ArchitectureInterviewApp.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/architecture-interview.css", root), "utf8");
+  const guide = await readFile(new URL("../docs/DISCUSSION_ARCHITECTURE_INTERVIEW.md", root), "utf8");
+  const publishedGuide = await readFile(new URL("DISCUSSION_ARCHITECTURE_INTERVIEW.md", root), "utf8");
+  assert.match(html, /NPU architecture interview workbench/);
+  assert.match(main, /from "mermaid"/);
+  assert.match(main, /await mermaid\.run/);
+  assert.match(app, /Use BETRV/);
+  assert.match(app, /THIRTEEN-TOPIC PLAN/);
+  assert.match(app, /SEVENTEEN RECALL PROMPTS/);
+  assert.match(app, /Tenstorrent experience boundary/);
+  assert.match(app, /Huawei CANN \+ MindSpore/);
+  assert.match(app, /BuiCongNguyen_ResumeEN_202607\.pdf/);
+  assert.equal((app.match(/id: "(?:memory|transformer|quantization|compiler|fusion|scheduling|tenstorrent|huawei|performance|projects|questions|simulator|focus)"/g) ?? []).length, 13);
+  const promptBlock = app.match(/const principalPrompts = \[([\s\S]*?)\] as const;/)?.[1] ?? "";
+  assert.equal((promptBlock.match(/^  \["/gm) ?? []).length, 17);
+  assert.match(app, /P ≤ min/);
+  assert.match(app, /7B → 70B/);
+  assert.match(app, /FP8 ≠ BFLOAT8_B/);
+  assert.match(app, /Lower watts ≠ lower energy/);
+  assert.match(styles, /\.scenario-tabs/);
+  assert.match(styles, /\.option-table/);
+  assert.match(styles, /\.prep-grid/);
+  assert.match(styles, /\.question-grid/);
+  assert.match(guide, /## 0\. Thirteen-topic preparation plan/);
+  assert.match(guide, /One-day execution sequence/);
+  assert.match(guide, /Technical portfolio/);
+  assert.match(guide, /## Question 1/);
+  assert.match(guide, /## Question 6/);
+  assert.match(guide, /KV bytes = batch/);
+  assert.match(guide, /Data parallel[\s\S]*Does not reduce/);
+  assert.ok((guide.match(/```mermaid/g) ?? []).length >= 4);
   assert.equal(publishedGuide, guide);
 });
 

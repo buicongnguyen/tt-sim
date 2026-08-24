@@ -256,6 +256,26 @@ that visible.
 - **Possible destination:** a maintained quantization and mixed-precision
   chapter after real Blackhole quality/performance measurements are filled.
 
+### OPT-08 — Answer NPU architecture trade-off questions
+
+- **Status:** `EVIDENCE`
+- **Detailed Q&A:** [Discussion subpage 07 — NPU architecture interview
+  workbench](./DISCUSSION_ARCHITECTURE_INTERVIEW.md)
+- **Question:** How do fixed-area allocation, GEMM dataflow, 7B-to-70B scaling,
+  precision, utilization and power decisions become defensible recommendations?
+- **Hypothesis:** Adding evidence and validation to “bottleneck, options,
+  trade-offs, recommendation” exposes weak assumptions before an interview
+  answer becomes a design claim.
+- **Evidence available:** Thirteen topic plans connect the interview brief to
+  résumé/portfolio ownership boundaries, six detailed cases, 17 recall prompts,
+  roofline/SRAM/KV/pipeline/energy models, four Mermaid flows and pinned
+  TT-Metal/TTNN contracts.
+- **Next experiment:** Run the one-day sequence, rehearse each 45-second
+  opening, then answer one likely follow-up with a formula, a named counter and
+  a rollback gate.
+- **Possible destination:** presentation Q&A appendix and a maintained NPU
+  architecture chapter.
+
 ## Presentation room
 
 The [30-minute research and achievement presentation](./DISCUSSION_PRESENTATION_30_MIN.md)

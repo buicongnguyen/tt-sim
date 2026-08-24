@@ -167,6 +167,18 @@ const topics: readonly DiscussionTopic[] = [
     destination: "Quantization and mixed-precision chapter",
     page: "./discussion-quantization.html",
   },
+  {
+    id: "OPT-08",
+    track: "optimization",
+    status: "evidence",
+    title: "Answer NPU architecture trade-off questions",
+    question: "How do fixed area, GEMM dataflow, model scale, precision, utilization and power decisions become defensible recommendations?",
+    hypothesis: "Adding evidence and validation to bottleneck/options/trade-offs/recommendation exposes weak assumptions before an interview answer becomes a design claim.",
+    evidence: "Thirteen topic plans, résumé/portfolio ownership boundaries, six detailed cases, 17 recall prompts, first-order models and pinned TT-Metal/TTNN contracts.",
+    next: "Run the one-day sequence, rehearse each 45-second opening, then defend one follow-up with a formula, counter and rollback gate.",
+    destination: "Architecture interview and presentation appendix",
+    page: "./discussion-architecture-interview.html",
+  },
 ];
 
 const lifecycle = [
@@ -247,6 +259,7 @@ function DiscussionApp() {
             <a className="case-chain presentation" href="./discussion-presentation.html"><span>SUBPAGE 04 · 30-MINUTE PRESENTATION</span><h3>Tell the research story without outrunning the evidence.</h3><p>Copy-ready slides, speaker notes, two small boot/launch diagrams and defensible answers to likely technical questions.</p><i>Open presentation room →</i></a>
             <a className="case-chain quantization" href="./discussion-quantization.html"><span>SUBPAGE 05 · LLM QUANTIZATION</span><h3>An enum is not an operator promise.</h3><p>Choose BF16, BFP8, BFP4, integer or MX paths by tensor role, API legality, quality budget and measured traffic.</p><i>Open precision lab →</i></a>
             <a className="case-chain low-level" href="./debug-low-level-kernel-flow.html"><span>SUBPAGE 06 · LOW-LEVEL KERNEL DEBUG FLOW</span><h3>Debug the first missing boundary.</h3><p>Rendered Mermaid connects cold boot, Program launch, NCRISC handoff, W/R/K/KD/D, observer selection and DPRINT.</p><i>Open Mermaid atlas →</i></a>
+            <a className="case-chain architecture-interview" href="./discussion-architecture-interview.html"><span>SUBPAGE 07 · PRINCIPAL NPU INTERVIEW</span><h3>Do not guess the resource. Prove the limit.</h3><p>Thirteen study plans, résumé/portfolio evidence, six trade-off cases and 17 recall prompts turn broad preparation into defensible decisions.</p><i>Open architecture workbench →</i></a>
           </div>
           <div className="topic-controls">
             <div className="filter-group" role="group" aria-label="Filter by discussion track">

@@ -71,7 +71,7 @@ not turn a **PERSONALIZE** or **MEASURE** placeholder into a personal result.
 | S08 | Route from warm profile to layout/program/kernel work and apply precision by role | [`model_config.py:128–237`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/models/tt_transformers/tt/model_config.py#L128-L237), [Tensix compute dataflow](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/compute_engines_and_dataflow_within_tensix.html), [profiler tools](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html) |
 | S09 | Storage reduction needs a measured quality/performance result | [`constants.hpp:13–21`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/api/tt-metalium/constants.hpp#L13-L21), [quantization decision page](https://buicongnguyen.github.io/tt-sim/discussion-quantization.html), [device profiler reference](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html) |
 | S10 | Cross-layer contribution summary | [TT-Metalium stack/workflow](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/get_started/get_started.html); personal ownership still requires the speaker's artifacts |
-| S11 | Q&A answers route to code contracts rather than memory | [host-to-RISC flow](https://buicongnguyen.github.io/tt-sim/firmware-flow.html), [official tools](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html), [official `ttnn.linear`](https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/api/ttnn.linear.html) |
+| S11 | Q&A answers route to code contracts rather than memory | [architecture interview workbench](https://buicongnguyen.github.io/tt-sim/discussion-architecture-interview.html), [host-to-RISC flow](https://buicongnguyen.github.io/tt-sim/firmware-flow.html), [official tools](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tools/index.html), [official `ttnn.linear`](https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/api/ttnn.linear.html) |
 
 ---
 
@@ -520,6 +520,10 @@ Use this first-answer structure:
 claim → strongest evidence → limitation → next experiment
 ```
 
+For resource-allocation and performance trade-offs, use the expanded
+**bottleneck → evidence → options → trade-offs → recommendation → validation**
+structure in the [NPU architecture interview workbench](./DISCUSSION_ARCHITECTURE_INTERVIEW.md).
+
 ### Q1 — Why do you say NCRISC does not call BRISC?
 
 They are independent firmware loops. BRISC writes the shared subordinate DM1
@@ -573,6 +577,14 @@ Use the same model, prompts, mesh, software revision, warm-up and quality gate;
 change one variable; repeat warm measurements; and retain a profiler signature
 that explains the delta.
 
+### Q9 — How do you answer a fixed-area architecture trade-off?
+
+Freeze the workload distribution and SLO. Place each important phase on a
+roofline and power model, then compare compute, SRAM, external bandwidth and
+data-movement options under equal area **and power**. Recommend the smallest
+balanced change that moves the weighted bottleneck, and state the performance,
+power, thermal, package, cost and software validation gates.
+
 ## Logic review
 
 | Review question | Failure avoided | Gate |
@@ -612,4 +624,4 @@ The presentation flow was checked against these concrete source facts:
 - [ ] results table contains measured values and run IDs;
 - [ ] architecture diagrams fit and remain legible;
 - [ ] full talk finishes by minute 27;
-- [ ] first answers to Q1–Q8 stay under 45 seconds.
+- [ ] first answers to Q1–Q9 stay under 45 seconds.

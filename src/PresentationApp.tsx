@@ -227,6 +227,7 @@ const slides: readonly Slide[] = [
     speakerNote: "If self-introduction is skipped, use four minutes here. Keep each first answer under 45 seconds, then offer the deeper source path.",
     evidence: "VERIFIED",
     sources: [
+      { label: "Architecture interview workbench", href: "./discussion-architecture-interview.html" },
       { label: "Firmware flow references", href: "./firmware-flow.html" },
       { label: "Official tools reference", href: officialDocs.tools },
       { label: "Official ttnn.linear reference", href: officialDocs.linear },
@@ -243,6 +244,7 @@ const questions = [
   ["Why is BFP8 common instead of INT8 for the LLM path?", "The pinned TTNN linear contract directly supports BF16, BFP8_B, BFP4_B and FP32 tile tensors. INT8 exists lower in the stack, but generic linear does not expose it as a supported input contract.", { label: "Official ttnn.linear contract", href: officialDocs.linear }],
   ["What is the biggest quantization risk?", "Applying one dtype globally. Attention, KV cache, residual paths, MLP weights and accumulations have different error sensitivity, so the sweep and rollback unit must be a tensor role.", { label: "Per-role precision policy", href: `${sourceRoot}/models/tt_transformers/tt/model_config.py#L128-L237` }],
   ["How do you know a speedup is real?", "Same model, inputs, mesh, software revision, warm-up and quality gate; one changed variable; repeated warm measurements; and a profiler signature that explains the delta.", { label: "Device profiler reference", href: officialDocs.tools }],
+  ["How do you answer a fixed-area architecture trade-off?", "Freeze the workload mix and SLO, classify each phase with a roofline and power model, compare compute, SRAM, bandwidth and data-movement options at equal area and power, then recommend one design with a validation and rollback gate.", { label: "Architecture interview workbench", href: "./discussion-architecture-interview.html" }],
 ] as const;
 
 function formatSlide(slide: Slide) {
@@ -334,7 +336,7 @@ function PresentationApp() {
         </section>
       </main>
 
-      <footer className="deck-footer"><div><b>TT•SIM · DISCUSSION SUBPAGE 04</b><p>Source-backed 30-minute research and achievement presentation.</p></div><a href="./discussion-blackhole-bringup.html">Bring-up case →</a><a href="./discussion-transformer-blackhole-optimization.html">Transformer case →</a><a href="./discussion-quantization.html">Quantization →</a><a href="./discussion.html">Discussion →</a></footer>
+      <footer className="deck-footer"><div><b>TT•SIM · DISCUSSION SUBPAGE 04</b><p>Source-backed 30-minute research and achievement presentation.</p></div><a href="./discussion-architecture-interview.html">Architecture Q&amp;A →</a><a href="./discussion-blackhole-bringup.html">Bring-up case →</a><a href="./discussion-transformer-blackhole-optimization.html">Transformer case →</a><a href="./discussion-quantization.html">Quantization →</a><a href="./discussion.html">Discussion →</a></footer>
     </div>
   );
 }
