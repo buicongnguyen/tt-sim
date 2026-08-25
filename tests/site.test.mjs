@@ -129,8 +129,8 @@ test("publishes the 50-question principal NPU interview reader", async () => {
   assert.match(data, /retargeted and validated/);
   assert.match(data, /Simulate to eliminate/);
   assert.match(styles, /\.qa-filters/);
-  assert.match(styles, /--q-label:10px/);
-  assert.match(styles, /--q-body:14px/);
+  assert.match(styles, /--q-label:12px/);
+  assert.match(styles, /--q-body:16px/);
   assert.match(styles, /font-size:clamp\(46px,5\.5vw,82px\)/);
   assert.match(styles, /\.qa-answer\[hidden\]/);
   assert.match(styles, /@media print/);
