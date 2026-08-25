@@ -649,6 +649,43 @@ test("provides a book-style chapter sidebar", async () => {
   assert.match(styles, /\.chapters-open \.book-sidebar/);
 });
 
+test("gives every technical subpage one readable book frame", async () => {
+  const frame = await readFile(new URL("../src/BookFrame.tsx", root), "utf8");
+  const styles = await readFile(new URL("../src/book-frame.css", root), "utf8");
+  const entries = [
+    "architecture-interview-main.tsx",
+    "architecture-interview-qa-main.tsx",
+    "async-kernels-main.tsx",
+    "blackhole-bringup-main.tsx",
+    "blackhole-synchronization-main.tsx",
+    "debug-low-level-kernel-flow-main.tsx",
+    "discussion-main.tsx",
+    "firmware-flow-main.tsx",
+    "huawei-main.tsx",
+    "presentation-main.tsx",
+    "quantization-main.tsx",
+    "transformer-optimization-main.tsx",
+  ];
+
+  assert.match(frame, /Accelerator field book/);
+  assert.match(frame, /Reading progress/);
+  assert.match(frame, /On this page/);
+  assert.match(frame, /aria-current=.*page/);
+  assert.match(frame, /aria-current=.*location/);
+  assert.equal((frame.match(/number: "\d{2}"/g) ?? []).length, 13);
+  assert.match(styles, /\.book-rail\s*{[^}]*position:\s*fixed/s);
+  assert.match(styles, /\.book-frame-content\s*{[^}]*margin-left:\s*290px/s);
+  assert.match(styles, /@media \(max-width:\s*980px\)/);
+  assert.match(styles, /font-size:\s*clamp\(15px/);
+
+  for (const entry of entries) {
+    const source = await readFile(new URL(`../src/${entry}`, root), "utf8");
+    assert.match(source, /import BookFrame from "\.\/BookFrame"/);
+    assert.match(source, /import "\.\/book-frame\.css"/);
+    assert.match(source, /<BookFrame>/);
+  }
+});
+
 test("uses relative built asset paths for project Pages", async () => {
   const html = await readFile(new URL("index.html", root), "utf8");
   assert.match(html, /(?:src|href)="\.\/assets\//);

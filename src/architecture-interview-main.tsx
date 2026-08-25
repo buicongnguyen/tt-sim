@@ -2,7 +2,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import mermaid from "mermaid";
 import ArchitectureInterviewApp from "./ArchitectureInterviewApp";
+import BookFrame from "./BookFrame";
 import "./architecture-interview.css";
+import "./book-frame.css";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -28,7 +30,9 @@ mermaid.initialize({
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ArchitectureInterviewApp />
+    <BookFrame>
+      <ArchitectureInterviewApp />
+    </BookFrame>
   </StrictMode>,
 );
 

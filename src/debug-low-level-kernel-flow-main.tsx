@@ -2,7 +2,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import mermaid from "mermaid";
 import DebugLowLevelKernelFlowApp from "./DebugLowLevelKernelFlowApp";
+import BookFrame from "./BookFrame";
 import "./debug-low-level-kernel-flow.css";
+import "./book-frame.css";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -30,7 +32,9 @@ mermaid.initialize({
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <DebugLowLevelKernelFlowApp />
+    <BookFrame>
+      <DebugLowLevelKernelFlowApp />
+    </BookFrame>
   </StrictMode>,
 );
 
