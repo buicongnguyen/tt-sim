@@ -1,10 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
+import darkTheme from "./scripts/dark-theme";
 
 export default defineConfig({
   base: "./",
   plugins: [react()],
+  css: { postcss: { plugins: [darkTheme()] } },
   build: {
     outDir: "dist",
     emptyOutDir: true,

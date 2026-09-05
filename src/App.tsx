@@ -515,6 +515,7 @@ function App() {
   }, [done]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
     try { localStorage.setItem("ttsim-theme", theme); } catch { /* The selected theme still applies to this page. */ }
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#07110f" : "#f7f3e8");
   }, [theme]);

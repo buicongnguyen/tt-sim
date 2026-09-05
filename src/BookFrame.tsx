@@ -98,6 +98,13 @@ function BookFrame({ children }: { children: ReactNode }) {
     return chapters.find((chapter) => routeName(chapter.href) === currentRoute) ?? chapters[0];
   }, []);
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    try { localStorage.setItem('ttsim-theme', theme); } catch { /* Theme still works without persistence. */ }
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#10171e' : '#f8f5e9');
+  }, [theme]);
   const [mobile, setMobile] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeSection, setActiveSection] = useState("");
@@ -154,6 +161,7 @@ function BookFrame({ children }: { children: ReactNode }) {
   return (
     <div className={`book-frame${open ? " book-frame-open" : ""}`}>
       <a className="book-skip-link" href="#book-page-content">Skip to chapter content</a>
+      <button className="book-theme-toggle" type="button" aria-label="Dark mode" aria-pressed={theme === 'dark'} onClick={() => setTheme(value => value === 'dark' ? 'light' : 'dark')}><span aria-hidden="true">◐</span> {theme === 'dark' ? 'Light mode' : 'Dark mode'}</button>
       <button className="book-frame-menu" type="button" aria-expanded={open} aria-controls="book-rail" onClick={() => setOpen((value) => !value)}><span aria-hidden="true">☰</span><b>Contents</b></button>
       <button className="book-frame-scrim" type="button" aria-label="Close table of contents" onClick={() => setOpen(false)} />
       <aside className="book-rail" id="book-rail" aria-label="TT-SIM book contents" aria-hidden={sidebarHidden} inert={sidebarHidden}>

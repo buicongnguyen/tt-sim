@@ -41,3 +41,17 @@
 }
 
 @media (prefers-reduced-motion:reduce) { .book-rail,.book-rail-progress i { transition:none; } }
+
+.book-theme-toggle { position:fixed; bottom:16px; right:18px; z-index:125; min-height:44px; padding:10px 16px; border:1px solid #66736e; border-radius:24px; background:#fffdf6; color:#1b2925; font:600 14px/1.3 "Manrope",sans-serif; cursor:pointer; box-shadow:0 3px 16px #0003; }
+.book-theme-toggle:focus-visible { outline:3px solid #286f9f; outline-offset:3px; }
+:root[data-theme="dark"] { color-scheme:dark; background:#10171e; }
+:root[data-theme="dark"] body { background:#10171e; }
+:root[data-theme="dark"] ::selection { background:#375b70; color:#fff; }
+:root[data-theme="dark"] :focus-visible { outline-color:#8ccfff; }
+/* Mermaid owns inline SVG colors; theme the diagram primitives as well. */
+:root[data-theme="dark"] .mermaid svg { background:#141f28!important; }
+:root[data-theme="dark"] .mermaid :is(rect,polygon,circle,ellipse) { fill:#22333f!important; stroke:#8ba8bb!important; }
+:root[data-theme="dark"] .mermaid :is(text,tspan,.nodeLabel,.edgeLabel,p) { color:#e3edf4!important; fill:#e3edf4!important; }
+:root[data-theme="dark"] .mermaid .edgeLabel { background:#141f28!important; }
+:root[data-theme="dark"] .mermaid :is(.flowchart-link,.messageLine0,.messageLine1) { stroke:#a7c6d8!important; }
+:root[data-theme="dark"] .mermaid marker path { fill:#a7c6d8!important; }

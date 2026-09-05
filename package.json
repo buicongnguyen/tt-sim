@@ -11,7 +11,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "npm run build && node --test tests/site.test.mjs",
+    "test": "npm run build && node --test tests/*.test.mjs",
     "lint": "eslint src --max-warnings=0",
     "check:sources": "node scripts/check-source-links.mjs --online"
   },
@@ -30,6 +30,7 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.4.26",
     "globals": "16.4.0",
+    "postcss": "8.5.14",
     "typescript": "5.9.3",
     "typescript-eslint": "8.59.3",
     "vite": "8.0.13"

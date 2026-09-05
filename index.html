@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script src="./theme-init.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#07110f" />
@@ -15,20 +16,6 @@
     <meta name="twitter:image" content="https://buicongnguyen.github.io/tt-sim/og.png" />
     <link rel="icon" href="./favicon.svg" />
     <title>TT•SIM Lab — Quasar & Blackhole field guide</title>
-    <script>
-      (() => {
-        try {
-          const saved = localStorage.getItem("ttsim-theme");
-          const theme = saved === "light" || saved === "dark"
-            ? saved
-            : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-          document.documentElement.dataset.theme = theme;
-          document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#07110f" : "#f7f3e8");
-        } catch {
-          document.documentElement.dataset.theme = "dark";
-        }
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>
