@@ -2,6 +2,11 @@
 
 Research date: **16 August 2026**
 
+Source and logic review: **5 September 2026**. See the
+[interview source review](INTERVIEW_SOURCE_REVIEW.md) for checked code, corrections,
+and the limits of this review. Product specifications below retain their original
+research date; they have not all been revalidated as current shipping specifications.
+
 ## Scope and verdict
 
 This comparison uses the shipping Blackhole p150 card and the original Huawei
@@ -24,19 +29,28 @@ GDDR6 → NoC → local SRAM/circular buffers
        → local SRAM → NoC → GDDR6
        controlled by BRISC/NCRISC + three TRISCs
 
-Huawei Ascend AI Core
+Huawei separated AIC/AIV (not the original Ascend 910 coupled core)
 HBM/global memory → MTE2 → L1 → L0A/L0B
                   → Cube → L0C → FixPipe → GM/L1
 vector path: GM → MTE2 → UB → Vector → UB → MTE3 → GM
                   controlled by Scalar instruction queues
 ```
 
-Huawei's official [Ascend C architecture guide](https://www.hiascend.com/document/detail/en/canncommercial/850/opdevg/Ascendcopdevg/atlas_ascendc_10_0008.html)
-documents Cube, Vector, Scalar, MTE1/2/3, L1, L0A/B/C, Unified Buffer and
-FixPipe, including the exact flows above. Tenstorrent's
+Huawei's official [CANN 8.0 Ascend C architecture guide](https://www.hiascend.com/document/detail/en/canncommercial/800/opdevg/Ascendcopdevg/atlas_ascendc_10_0008.html)
+separates coupled and separated architectures. In the separated design, MTE1
+stages L1 into L0A/L0B; FixPipe can send L0C to GM or L1. The documented AIC/AIV
+exchange uses GM: do not draw an unconditional direct FixPipe-to-UB connection.
+The original 910 memory figures do not establish that it has this separated
+topology. Tenstorrent's
 [compute-engine guide](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/advanced_topics/compute_engines_and_dataflow_within_tensix.html)
 documents the corresponding unpack/math/pack dataflow and programmable RISC-V
 roles.
+
+BRISC is DM0 and NCRISC is DM1 on Blackhole, but reader and writer are assigned
+by the program. The pinned [eltwise example](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/programming_examples/eltwise_binary/eltwise_binary.cpp#L110-L145)
+uses DM0 for its reader and DM1 for its writer. This example is not a fixed
+hardware restriction; inspect the selected program configuration before naming
+its processor roles.
 
 ## Comparison by design decision
 
@@ -44,7 +58,7 @@ roles.
 |---|---|---|---|
 | Compute organization | 120 enabled Tensix workers; matrix/vector math plus small RISC-V controllers | AI Cores with Cube, Vector and Scalar; later A2/A3 products separate AIC/AIV | Both overlap movement and compute, but scheduling granularity and memory contracts differ |
 | Local memory | 180 MB aggregate SRAM on p150 | L1, L0A/B/C, UB and caches; a Huawei-hosted paper reports 34 MB on-chip cache for Ascend 910 | Blackhole exposes more aggregate on-card SRAM; the values are not like-for-like address spaces |
-| External memory | 32 GB GDDR6, 512 GB/s | Architecture material identifies 32 GB HBM Gen2; paper reports about 1.2 TB/s GM→L1/UB for Ascend 910 | Ascend 910 has about 2.34× the cited global-memory feed rate; Blackhole relies more on SRAM locality and explicit movement |
+| External memory | 32 GB GDDR6, 512 GB/s | Architecture material identifies 32 GB HBM Gen2; paper reports about 1.2 TB/s GM→L1/UB for Ascend 910 | Arithmetic ratio ≈2.34, but interface bandwidth and a GM-to-local path figure are not matched sustained measurements |
 | Kernel model | TT-Metal/LLK reader-compute-writer kernels and circular buffers | Ascend C kernels with GlobalTensor/LocalTensor, queues and MTE copy-in/out | Both demand tiling and pipelining; APIs expose different machine abstractions |
 | Openness | TT-Metal, TT-NN, TT-MLIR/TT-Forge and LLKs are public | CANN/Ascend C documentation and community interfaces are public; low-level silicon implementation visibility differs | Blackhole is easier to audit from compiler to architecture-specific LLK source |
 | Scale-out | Direct Ethernet links and TT-Fabric; Galaxy uses 32 ASICs | HCCS/UnifiedBus/SuperPoD system organization depends on Ascend generation | Compare deployed systems and collective workloads, not a single link label |
@@ -165,10 +179,10 @@ information.
 
 ### Short answer
 
-Huawei's documented advantages are **external-memory bandwidth, specialized
-dense-compute pipelines, tightly integrated scale-up and production training
-software**. Public evidence does not establish that Huawei is universally
-faster per chip, per watt or per dollar.
+The cited Huawei products provide **HBM, specialized dense-compute pipelines,
+large scale-up configurations and training software APIs**. These are capabilities
+to evaluate, not proof of comparative performance or software maturity. This
+review does not establish a winner per chip, per watt or per dollar.
 
 ### 1. Higher cited external-memory feed
 
@@ -180,9 +194,11 @@ The original Ascend 910 evidence reports 32 GB of global memory and about
 1.2 TB/s ÷ 0.512 TB/s ≈ 2.34×
 ```
 
-That gives Ascend a higher ceiling for large-batch training, long-context
-attention, embeddings and other operations that repeatedly reach external
-memory. It is not a prediction that every application is 2.34× faster.
+This is only an arithmetic ratio of two reported numbers. A paper's GM-to-local
+path figure and a card's memory-interface specification do not establish equal
+measurement boundaries, sustained bandwidth, or an application speedup. A
+bandwidth advantage requires matched access patterns and measurement methods
+on the named products; larger-batch training may instead be compute-bound.
 Blackhole counters with 180 MB of distributed SRAM and explicit reuse; the
 Ascend cache and Blackhole SRAM totals are not like-for-like address spaces.
 
@@ -218,12 +234,12 @@ publishes a different-sized unit:
 - 23 PFLOPS Block-FP8 peak;
 - 32 TB/s accelerator fabric, plus Ethernet scale-out to multiple Galaxies.
 
-Huawei is more advanced in presenting hundreds of NPUs as one tightly
-integrated scale-up machine. Tenstorrent emphasizes smaller modular units and
-programmable Ethernet scale-out. The peak numbers cannot rank them because the
+The cited Huawei unit contains more NPUs than the cited Galaxy server.
+Tenstorrent also supports multi-server systems. This is a comparison of
+different system boundaries, not a platform scalability limit. The peak numbers cannot rank them because the
 chip count, precision and system boundary differ.
 
-### 4. A more mature large-training software system
+### 4. Training software capabilities to evaluate
 
 [CANN 9.0 documentation](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/index/index.html)
 lists PyTorch, TensorFlow and MindSpore integration, graph and operator APIs,
@@ -231,15 +247,15 @@ HCCL collectives, transformer acceleration, automatic optimization, profiling,
 precision debugging and migration tools. Huawei also reports production
 deployment of Atlas 900 A3 SuperPoDs.
 
-TT-NN, TT-Forge/TT-MLIR and TT-Fabric are open and improving quickly, but the
-Blackhole production ecosystem is younger. For a large training installation,
+This API inventory does not measure comparative maturity or reliability.
+For a large training installation,
 collective reliability, framework coverage and operational tooling can matter
 as much as a chip's arithmetic peak.
 
 ### What the performance evidence supports
 
-Huawei is likely advantaged when the chosen product and software version are
-well optimized for:
+Evaluate Huawei as a candidate when the chosen product and software version
+support these workloads. The following are evaluation targets, not measured wins:
 
 - large distributed FP16/BF16 training;
 - dense matrix workloads;
@@ -253,7 +269,7 @@ modular Ethernet-based inference.
 
 ### What the evidence does not support
 
-No trustworthy public apples-to-apples benchmark holds all of these constant:
+This review has no matched benchmark holding all of these constant:
 
 ```text
 same model + same precision + same batch
@@ -267,9 +283,9 @@ not establish per-chip performance, performance per watt or cost per token.
 
 ### Answer in one line
 
-> Huawei is ahead in HBM-fed dense training and tightly integrated scale-up;
-> Tenstorrent is ahead in open low-level programmability and explicit dataflow,
-> and controlled measurements are still required for an end-to-end winner.
+> The cited Huawei products offer HBM and large scale-up configurations;
+> Tenstorrent provides a public low-level programming path. Select the actual
+> workload and products, then measure correctness, latency, bandwidth and scaling.
 
 ## Does Huawei “use HBM”?
 
@@ -294,10 +310,11 @@ For `Y = ReLU(A × B + bias)`:
   SRAM/circular buffers, run matrix math, then fuse bias/ReLU to avoid an
   intermediate DRAM trip. TT-Metal makes NoC movement and synchronization
   explicit.
-- **Ascend:** tile global tensors into L1/L0A/L0B for Cube, accumulate in L0C,
-  then use FixPipe or Vector/UB for post-processing before MTE copy-out. On a
-  separated AIC/AIV design, system software must coordinate matrix and vector
-  cores and their global-memory exchange.
+- **Separated Ascend AIC/AIV:** tile global tensors into L1/L0A/L0B for Cube
+  and accumulate in L0C. A supported FixPipe epilogue can write to GM; a Vector
+  epilogue in the cited architecture requires GM-to-UB staging and UB-to-GM
+  MTE3 copy-out. Fusion legality and whether it removes a GM round trip depend
+  on the exact target and supported epilogue.
 
 The same compiler questions remain—tiling, legal formats, lifetimes, overlap,
 fusion and synchronization—but the target cost model must be different.

@@ -148,7 +148,12 @@ fused_linear_relu(A, B, bias)
 ```
 
 The starter files use generic quoted operations so they can be parsed before a
-custom dialect exists. Then define real operations and a `RewritePattern`.
+custom dialect exists. Use them to learn the legality checks, but do not stop
+at a private toy dialect. Re-express the experiment with an existing TT-MLIR
+TTIR/TTNN or D2M path, then implement or extend the relevant
+`RewritePattern`. The contribution-sized artifact is a real before/after IR
+contract with lit/FileCheck coverage, not merely a textually fused `lab.*`
+fixture.
 
 The pattern must reject:
 
@@ -269,7 +274,7 @@ directly to matmul merely because the MLIR graph contains one.
 
 ## Primary references
 
-- [TT Architecture and Metalium Guide](https://github.com/tenstorrent/tt-metal/blob/main/METALIUM_GUIDE.md)
+- [TT Architecture and Metalium Guide](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/METALIUM_GUIDE.md)
 - [Metalium DRAM loopback](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/examples/dram_loopback.html)
 - [Metalium getting started: reader, compute, writer and circular buffers](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/get_started/get_started.html)
 - [TT-MLIR architecture and dialect overview](https://docs.tenstorrent.com/tt-mlir/overview.html)

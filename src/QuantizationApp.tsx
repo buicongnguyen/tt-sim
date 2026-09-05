@@ -204,11 +204,13 @@ function QuantizationApp() {
   const [activeKey, setActiveKey] = useState<FormatKey>("bfp8");
   const [activeCalibrationKey, setActiveCalibrationKey] = useState<CalibrationKey>("ptq-qat");
   const [copied, setCopied] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState(false);
   const active = useMemo(() => formats.find((format) => format.key === activeKey) ?? formats[1], [activeKey]);
   const activeCalibration = useMemo(() => calibrationQuestions.find((item) => item.key === activeCalibrationKey) ?? calibrationQuestions[0], [activeCalibrationKey]);
 
   async function copy(text: string, label: string) {
-    await navigator.clipboard.writeText(text);
+    setCopyError(false);
+    try { await navigator.clipboard.writeText(text); } catch { setCopyError(true); return; }
     setCopied(label);
     window.setTimeout(() => setCopied(null), 1400);
   }
@@ -221,6 +223,7 @@ function QuantizationApp() {
       </header>
 
       <main>
+        {copyError && <p role="status">Clipboard access was blocked. Select the code to copy it manually.</p>}
         <section className="quant-hero">
           <div className="quant-hero-index"><span>DISCUSSION / 05</span><strong>4</strong><small>BITS · SELECTIVELY</small></div>
           <div className="quant-hero-copy"><p>LLM × TTNN × TT-METAL × BLACKHOLE</p><h1>Compress the<br/><em>traffic,</em><br/>not the truth.</h1><div className="quant-equation"><span>MODEL QUALITY</span><i>∩</i><span>MEMORY TRAFFIC</span><i>∩</i><span>WARM LATENCY</span></div></div>

@@ -264,11 +264,13 @@ function formatSlide(slide: Slide) {
 function PresentationApp() {
   const [activeId, setActiveId] = useState("S01");
   const [copied, setCopied] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState(false);
   const active = useMemo(() => slides.find((slide) => slide.id === activeId) ?? slides[0], [activeId]);
   const totalMinutes = slides.reduce((sum, slide) => sum + slide.minutes, 0);
 
   async function copy(text: string, label: string) {
-    await navigator.clipboard.writeText(text);
+    setCopyError(false);
+    try { await navigator.clipboard.writeText(text); } catch { setCopyError(true); return; }
     setCopied(label);
     window.setTimeout(() => setCopied(null), 1400);
   }
@@ -281,6 +283,7 @@ function PresentationApp() {
       </header>
 
       <main>
+        {copyError && <p role="status">Clipboard access was blocked. Select the slide text to copy it manually.</p>}
         <section className="deck-hero">
           <div className="deck-hero-code"><span>DISCUSSION / 04</span><strong>30</strong><small>MINUTES</small></div>
           <div className="deck-hero-copy"><p>RESEARCH × ACHIEVEMENT × DEFENSIBLE Q&amp;A</p><h1>A talk you can<br/><em>defend</em><br/>from source.</h1><div><b>{slides.length} slides</b><b>{totalMinutes} minutes</b><b>2 project stories</b></div></div>

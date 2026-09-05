@@ -68,7 +68,7 @@ function ArchitectureInterviewQAApp() {
         </section>
 
         <section id="questions" className="qa-section qa-reader">
-          <header><span>01 / THE QUESTION BANK</span><h2>Find the topic.<br/>Open the evidence.</h2><p>Search any concept or filter by topic. The source links distinguish public architecture facts from personal professional evidence.</p></header>
+          <header><span>01 / THE QUESTION BANK</span><h2>Find the topic.<br/>Open the evidence.</h2><p>Direct answer is the short response; principal depth adds constraints, trade-offs and failure modes to the same answer. “How to prove it” describes a proposed experiment, not a completed measurement. GitHub references use TT-Metal revision 50a82f83559; official “latest” documentation may differ. Personal outcomes are résumé claims, not facts proved by public vendor code. <a href="./INTERVIEW_SOURCE_REVIEW.md">Read the source review ↗</a></p></header>
 
           <div className="qa-controls">
             <label className="qa-search"><span>SEARCH</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try HBM, KV cache, fusion, simulator…" aria-label="Search 50 interview questions" /></label>

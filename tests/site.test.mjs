@@ -1,8 +1,34 @@
 import assert from "node:assert/strict";
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
+import ts from "typescript";
 import test from "node:test";
 
 const root = new URL("../dist/", import.meta.url);
+
+test("recovers invalid saved reading progress without crashing the guide", async () => {
+  const source = await readFile(new URL("../src/reading-progress.ts", root), "utf8");
+  const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
+  const { parseReadingProgress } = await import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`);
+  for (const invalid of [null, "null", "[]", "7", "true", '"string"', "{broken"]) {
+    assert.deepEqual(parseReadingProgress(invalid), {});
+  }
+  assert.deepEqual(parseReadingProgress('{"setup":true,"lab":false,"bad":"true"}'), { setup: true, lab: false });
+});
+
+test("publishes every report byte-for-byte from its authored source", async () => {
+  for (const name of await readdir(new URL("../docs/", root))) {
+    if (!name.endsWith(".md")) continue;
+    const published = await readFile(new URL(name, root), "utf8");
+    assert.equal(published, await readFile(new URL(`../docs/${name}`, root), "utf8"), name);
+    for (const match of published.matchAll(/\]\(([^\s)]+)\)/g)) {
+      const target = match[1];
+      if (/^(?:[a-z][a-z\d+.-]*:|#|\/)/i.test(target)) continue;
+      const destination = new URL(target, new URL(name, root));
+      destination.hash = "";
+      await access(destination).catch(() => assert.fail(`${name}: unpublished local target ${target}`));
+    }
+  }
+});
 
 test("builds a GitHub Pages-ready field guide", async () => {
   const html = await readFile(new URL("index.html", root), "utf8");
@@ -78,7 +104,7 @@ test("publishes the NPU architecture interview workbench", async () => {
   assert.match(html, /NPU architecture interview workbench/);
   assert.match(main, /from "mermaid"/);
   assert.match(main, /await mermaid\.run/);
-  assert.match(app, /Use BETRV/);
+  assert.match(app, /Use BEOTRV/);
   assert.match(app, /THIRTEEN-TOPIC PLAN/);
   assert.match(app, /SEVENTEEN RECALL PROMPTS/);
   assert.match(app, /Tenstorrent experience boundary/);
@@ -126,7 +152,7 @@ test("publishes the 50-question principal NPU interview reader", async () => {
   assert.match(data, /FlashAttention/);
   assert.match(data, /MinMax|Min-max/);
   assert.match(data, /CANN/);
-  assert.match(data, /retargeted and validated/);
+  assert.match(data, /YOLOv8, PointPillar, UniAD and VAD/);
   assert.match(data, /Simulate to eliminate/);
   assert.match(styles, /\.qa-filters/);
   assert.match(styles, /--q-label:12px/);
@@ -302,12 +328,12 @@ test("builds a dedicated Blackhole versus Huawei Ascend page", async () => {
   assert.match(html, /Blackhole × Huawei Ascend/);
   assert.match(html, /(?:src|href)="\.\/assets\//);
   assert.match(app, /HBM is one axis/);
-  assert.match(app, /not silently assigned to 910B\/910C/);
+  assert.match(app, /Memory figures describe original Ascend 910/);
   assert.match(app, /144 GB \/ 4 TB\/s HBM/);
   assert.match(app, /What can Huawei learn from Tenstorrent's architecture/);
   assert.match(app, /Where is Huawei more advanced in architecture and performance/);
   assert.match(app, /784 GB\/s bidirectional D2D/);
-  assert.match(app, /No public same-model, same-precision, same-power benchmark/);
+  assert.match(app, /This review contains no matched model, precision and power benchmark/);
   assert.match(styles, /\.flow-pair/);
   assert.match(styles, /\.comparison-table/);
   assert.match(styles, /\.qa-grid/);
@@ -316,7 +342,7 @@ test("builds a dedicated Blackhole versus Huawei Ascend page", async () => {
   assert.match(report, /32 GB HBM Gen2/);
   assert.match(report, /## Question 1: What can Huawei learn from Tenstorrent/);
   assert.match(report, /## Question 2: Where is Huawei more advanced than Tenstorrent/);
-  assert.match(report, /No trustworthy public apples-to-apples benchmark/);
+  assert.match(report, /This review has no matched benchmark/);
   assert.equal(publishedReport, report);
 });
 

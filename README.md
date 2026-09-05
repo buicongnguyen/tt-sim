@@ -2,7 +2,12 @@
 
 A source-grounded, hands-on field guide for learning Tenstorrent's official [`ttsim`](https://github.com/tenstorrent/ttsim) on Windows through Ubuntu 22.04 in WSL2—without Tenstorrent hardware.
 
-The site is designed for this machine's current baseline:
+For interview preparation, start with the [source review and claim-to-code map](docs/INTERVIEW_SOURCE_REVIEW.md).
+It distinguishes pinned implementation facts, dated product specifications,
+proposed experiments and résumé claims. Run `npm run check:sources` to repeat
+the read-only GitHub citation audit (network access required).
+
+The site is designed for this machine's recorded baseline:
 
 - Ubuntu 22.04.5 on WSL2, x86_64
 - 28 logical CPUs

@@ -67,7 +67,7 @@ WARNINGS: Expected simulator limitations
 ## Primary references
 
 - [Tenstorrent ttsim](https://github.com/tenstorrent/ttsim)
-- [RISC-V addition example](https://github.com/tenstorrent/tt-metal/blob/main/tt_metal/programming_examples/add_2_integers_in_riscv/add_2_integers_in_riscv.cpp)
-- [Simulator runtime options](https://github.com/tenstorrent/tt-metal/blob/main/tt_metal/llrt/rtoptions.cpp)
-- [Dispatch telemetry fallback](https://github.com/tenstorrent/tt-metal/blob/main/tt_metal/impl/dispatch/dispatch_telemetry.cpp)
-- [UMD harvesting validation](https://github.com/tenstorrent/tt-metal/blob/main/tt_metal/third_party/umd/device/cluster_descriptor.cpp)
+- [RISC-V addition example](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/programming_examples/add_2_integers_in_riscv/add_2_integers_in_riscv.cpp)
+- [Simulator runtime options](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/rtoptions.cpp)
+- [Dispatch telemetry fallback](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/dispatch/dispatch_telemetry.cpp)
+- [UMD harvesting validation at the recorded UMD revision](https://github.com/tenstorrent/tt-umd/blob/9bbe7bc93544029aadaa2b2bcbf39e774fa77f9a/device/cluster_descriptor.cpp)

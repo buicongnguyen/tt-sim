@@ -128,9 +128,9 @@ sequenceDiagram
 |---|---|---|
 | B1 | [`metal_context.cpp:283–307`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/metal_context.cpp#L283-L307) and [`build_env_manager.cpp:340–358`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/jit_build/build_env_manager.cpp#L340-L358) | Context starts firmware build and chooses precompiled/JIT construction |
 | B2 | [`build.cpp:628–790`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/jit_build/build.cpp#L628-L790) | Compile, link and weaken firmware symbols |
-| B3 | [`risc_firmware_initializer.cpp:1053–1123`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1053-L1123) | Host initializes tables, launch ring and GO state |
-| B4 | [`risc_firmware_initializer.cpp:1143–1199`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1143-L1199) | Host loads every selected RISC firmware binary |
-| B5 | [`risc_firmware_initializer.cpp:1495–1532`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1495-L1532) | Host releases the worker boot RISC and waits for initialization |
+| B3 | [`risc_firmware_initializer.cpp:1053–1123`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/device/firmware/risc_firmware_initializer.cpp#L1053-L1123) | Host initializes tables, launch ring and GO state |
+| B4 | [`risc_firmware_initializer.cpp:1143–1199`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/device/firmware/risc_firmware_initializer.cpp#L1143-L1199) | Host loads every selected RISC firmware binary |
+| B5 | [`risc_firmware_initializer.cpp:1495–1532`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/device/firmware/risc_firmware_initializer.cpp#L1495-L1532) | Host releases the worker boot RISC and waits for initialization |
 | B6 | [`brisc.cc:181–275`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L181-L275) | BRISC sets subordinate PCs and releases NCRISC/TRISCs |
 | B7 | [`brisc.cc:354–387`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L354-L387) | BRISC waits for and publishes initialization completion |
 | B8 | [`dispatch_kernel_initializer.cpp:119–203`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/device/firmware/dispatch_kernel_initializer.cpp#L119-L203) | Host constructs and installs persistent CQ Programs |
@@ -204,10 +204,10 @@ RISC firmware and should not be merged with it in a trace.
    [`build.cpp`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/jit_build/build.cpp#L628-L790).
    Firmware symbols are weakened so operation kernels can link against the
    resident firmware ABI later.
-4. [`initialize_firmware`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1053-L1199)
+4. [`initialize_firmware`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/device/firmware/risc_firmware_initializer.cpp#L1053-L1199)
    initializes launch state and writes every selected firmware binary.
 5. The host reset-release and initialization wait are in
-   [`risc_firmware_initializer.cpp`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/context/risc_firmware_initializer.cpp#L1495-L1532).
+   [`risc_firmware_initializer.cpp`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/device/firmware/risc_firmware_initializer.cpp#L1495-L1532).
 6. BRISC programs subordinate reset PCs, initializes the core and releases the
    other RISCs in
    [`brisc.cc`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L181-L275).

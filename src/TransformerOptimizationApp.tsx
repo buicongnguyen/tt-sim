@@ -270,9 +270,9 @@ function TransformerOptimizationApp() {
             {codeLayers.map((layer, index) => <div className="code-flow-cell" key={layer.id}><a href={layer.href}><span>{layer.id} / {layer.role}</span><b>{layer.title}</b><p>{layer.detail}</p><i>Open source ↗</i></a>{index < codeLayers.length - 1 && <em aria-hidden="true">↓</em>}</div>)}
           </div>
           <div className="kernel-triptych">
-            <div><span>BRISC / DM</span><b>Reader</b><p>Moves Q/K/V, page-table data and scalars into circular buffers.</p><a href={`${sourceRoot}/ttnn/cpp/ttnn/operations/transformer/sdpa_decode/device/kernels/dataflow/reader_decode_all.cpp`}>reader_decode_all.cpp ↗</a></div>
+            <div><span>ReaderConfigDescriptor</span><b>Reader</b><p>Moves Q/K/V, page-table data and scalars into circular buffers.</p><a href={`${sourceRoot}/ttnn/cpp/ttnn/operations/transformer/sdpa_decode/device/kernels/dataflow/reader_decode_all.cpp`}>reader_decode_all.cpp ↗</a></div>
             <div><span>TRISC</span><b>Compute</b><p>Runs tiled QK, softmax/statistics and value accumulation work.</p><a href={`${sourceRoot}/ttnn/cpp/ttnn/operations/transformer/sdpa_decode/device/kernels/compute/sdpa_flash_decode.cpp`}>sdpa_flash_decode.cpp ↗</a></div>
-            <div><span>NCRISC / DM</span><b>Writer</b><p>Coordinates reduction/output ownership and writes the result tensor.</p><a href={`${sourceRoot}/ttnn/cpp/ttnn/operations/transformer/sdpa_decode/device/kernels/dataflow/writer_decode_all.cpp`}>writer_decode_all.cpp ↗</a></div>
+            <div><span>WriterConfigDescriptor</span><b>Writer</b><p>Coordinates reduction/output ownership and writes the result tensor.</p><a href={`${sourceRoot}/ttnn/cpp/ttnn/operations/transformer/sdpa_decode/device/kernels/dataflow/writer_decode_all.cpp`}>writer_decode_all.cpp ↗</a></div>
           </div>
           <p className="kernel-note"><b>Synchronization is structural.</b> The SDPA descriptor builds circular buffers, reducer/output/K-multicast semaphores, compile-time arguments and per-core runtime bindings together. “Remove a wait” is valid only after producer/consumer ownership remains proven.</p>
         </section>

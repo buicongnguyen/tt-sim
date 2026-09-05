@@ -272,7 +272,7 @@ unvalidated refactor.
 ## Primary references
 
 - [Official ttsim repository and contribution boundary](https://github.com/tenstorrent/ttsim)
-- [TT-Metal contribution guide](https://github.com/tenstorrent/tt-metal/blob/main/CONTRIBUTING.md)
+- [TT-Metal contribution guide](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/CONTRIBUTING.md)
 - [TT-Metal bounty issues](https://github.com/tenstorrent/tt-metal/issues?q=is%3Aissue%20state%3Aopen%20label%3Abounty)
 - [TT-Metal unassigned bounty filter](https://github.com/tenstorrent/tt-metal/issues?q=is%3Aissue%20state%3Aopen%20label%3Abounty%20no%3Aassignee)
 - [Tenstorrent bounty terms](https://docs.tenstorrent.com/bounty_terms.html)

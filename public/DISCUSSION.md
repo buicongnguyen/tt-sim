@@ -270,7 +270,7 @@ that visible.
   résumé/portfolio ownership boundaries, six detailed cases, 17 recall prompts,
   roofline/SRAM/KV/pipeline/energy models, four Mermaid flows and pinned
   TT-Metal/TTNN contracts. The companion
-  [50-question reading room](../discussion-architecture-interview-qa.html)
+  [50-question reading room](https://buicongnguyen.github.io/tt-sim/discussion-architecture-interview-qa.html)
   expands these into direct answers, principal-depth follow-ups, proof gates,
   memory lines and per-question sources across seven topic groups.
 - **Next experiment:** Run the one-day sequence, rehearse each 45-second

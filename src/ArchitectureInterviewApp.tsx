@@ -39,7 +39,7 @@ const links = {
   tensor: "https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/tensor.html",
   linear: "https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/api/ttnn.linear.html",
   dataflowApi: `${sourceRoot}/tt_metal/hw/inc/api/dataflow/dataflow_api.h#L1743-L1917`,
-  cbApi: `${sourceRoot}/tt_metal/hw/inc/api/dataflow/dataflow_api.h#L832-L1223`,
+  cbApi: `${sourceRoot}/tt_metal/hw/inc/api/dataflow/dataflow_api.h#L195-L485`,
   types: `${sourceRoot}/tt_metal/api/tt-metalium/tensor/tensor_types.hpp#L26-L40`,
   bhInt8: `${sourceRoot}/tt_metal/tt-llk/tt_llk_blackhole/common/inc/ckernel_defs.h#L279-L284`,
   modelPrecision: `${sourceRoot}/models/tt_transformers/tt/model_config.py#L128-L237`,
@@ -145,7 +145,7 @@ const scenarios: readonly Scenario[] = [
       { name: "FP8 E4M3", bestWhen: "A floating exponent helps activations with variable range and E4M3 precision is adequate.", benefit: "Broader native range than fixed-scale INT8 within a block/tensor.", cost: "Format-specific hardware/software support, scaling and lower integer-like precision near some values." },
       { name: "FP8 E5M2", bestWhen: "Range is more important than mantissa precision, often gradients or extreme activations.", benefit: "More exponent range.", cost: "Only two mantissa bits; often excessive inference error and not universally supported." },
       { name: "INT8", bestWhen: "Per-channel/group scaling captures the distribution and efficient integer kernels exist.", benefit: "Simple 8-bit storage and strong dense arithmetic efficiency on supported paths.", cost: "Outliers, calibration/zero-point complexity, scale traffic and possible INT32/requantization overhead." },
-      { name: "Tenstorrent BFLOAT8_B", bestWhen: "The current TTNN/TT-Transformers operator path supports Block Float 8 for the tensor role.", benefit: "Shared exponent amortizes metadata and is a common TT model path.", cost: "Values share an exponent block; it is not IEEE FP8 and can lose small values near block outliers." },
+      { name: "Tenstorrent BFLOAT8_B", bestWhen: "The current TTNN/TT-Transformers operator path supports Block Float 8 for the tensor role.", benefit: "Shared exponent amortizes metadata and is a common TT model path.", cost: "Values share an exponent block; it is not scalar FP8 and can lose small values near block outliers." },
     ],
     recommendation: "For this pinned TT-Metal LLM path, start BF16, move supported roles to BFLOAT8_B, then consider BFLOAT4_B selectively. Treat INT8 or FP8_E4M3 as operation-specific until the exact linear/attention path proves support. In a generic NPU interview, answer FP8 for variable-range activations and INT8 for well-calibrated distributions only after stating the scale and accumulation contracts.",
     validation: ["Every selected operator accepts the format and layout.", "Calibration data represents real prompts and sequence regimes.", "Quality and overflow/saturation metrics pass.", "End-to-end speedup survives conversion and scale overhead."],
@@ -330,7 +330,7 @@ const prepTopics: readonly PrepTopic[] = [
     thesis: "The answer pattern matters more than memorizing a preferred optimization. Clarify the constraint, branch on evidence and defend a reversible decision.",
     learn: "Use the 17 prompts below to cover bottlenecks, HBM, SRAM, tiling, buffering, fusion, Transformer, quantization, regression, core count, clustering and simulator-only work.",
     rehearse: "Answer each in 45 seconds, then handle two follow-ups for three minutes. Record yourself and remove any claim without a metric, constraint or ownership boundary.",
-    prove: "Score every answer on BETRV: bottleneck, evidence, options, trade-offs, recommendation and validation. A complete answer earns six points.",
+    prove: "Score every answer on BEOTRV: bottleneck, evidence, options, trade-offs, recommendation and validation. A complete answer earns six points.",
     memory: "A principal answer makes a falsifiable decision under constraints.",
     href: "#question-bank",
     linkLabel: "Open 17 prompts",
@@ -394,7 +394,7 @@ const studyPlan = [
   ["120 min", "Walk the workload", "Transformer prefill/decode, KV ledger, quantization/outliers and compiler flow from graph to runtime."],
   ["60 min", "Map Huawei", "CANN, Ascend C, runtime and MindSpore nouns; rehearse one custom-operator bring-up without claiming hands-on results."],
   ["90 min", "Answer under pressure", "Six deep scenarios plus the 17-prompt bank. Record 45-second answers and one three-minute drill-down each."],
-  ["30 min", "Close the loop", "Write one page from memory: BETRV, six formulas, four project outcomes, three honest boundaries and first-day plan."],
+  ["30 min", "Close the loop", "Write one page from memory: BEOTRV, six formulas, four project outcomes, three honest boundaries and first-day plan."],
 ] as const;
 
 const framework = [
@@ -502,7 +502,7 @@ function ArchitectureInterviewApp() {
         </section>
 
         <section id="framework" className="architect-section framework-section">
-          <header><span>00 / ANSWER CONTRACT</span><h2>Use BETRV.<br/>Make the choice defensible.</h2><p>The original four-part structure is good. Adding evidence and validation prevents a plausible story from masquerading as an architecture decision.</p></header>
+          <header><span>00 / ANSWER CONTRACT</span><h2>Use BEOTRV.<br/>Make the choice defensible.</h2><p>The original four-part structure is good. Adding evidence and validation prevents a plausible story from masquerading as an architecture decision.</p></header>
           <div className="framework-grid">{framework.map(([letter, title, detail]) => <article key={letter}><b>{letter}</b><small>{title}</small><p>{detail}</p></article>)}</div>
           <pre className="answer-template">{answerTemplate}</pre>
         </section>
@@ -538,7 +538,7 @@ function ArchitectureInterviewApp() {
         <section id="study-plan" className="architect-section study-section">
           <header><span>03 / ONE-DAY EXECUTION</span><h2>Six passes.<br/>One recall sheet.</h2><p>This sequence follows the interview’s likely value: owned project evidence, architecture reasoning and performance analysis first; ecosystem vocabulary after the transferable method is stable.</p></header>
           <ol className="study-timeline">{studyPlan.map(([time, title, task], index) => <li key={title}><span>{String(index + 1).padStart(2, "0")}</span><time>{time}</time><h3>{title}</h3><p>{task}</p></li>)}</ol>
-          <div className="study-gate"><b>STOP CONDITION</b><p>Preparation is complete when you can answer from a blank page: BETRV, the six whiteboard models, four owned project outcomes, the simulator/hardware boundary and a first-30-days Huawei learning plan.</p></div>
+          <div className="study-gate"><b>STOP CONDITION</b><p>Preparation is complete when you can answer from a blank page: BEOTRV, the six whiteboard models, four owned project outcomes, the simulator/hardware boundary and a first-30-days Huawei learning plan.</p></div>
           <nav className="huawei-links" aria-label="Official Huawei study sources"><b>OFFICIAL HUAWEI PATH</b><a href={links.mindspore}>MindSpore stack ↗</a><a href={links.cannOperatorGuide}>Ascend C operator guide ↗</a><a href={links.cannRuntime}>CANN runtime flow ↗</a><a href={links.cannPerformance}>Performance optimization ↗</a></nav>
         </section>
 
@@ -557,7 +557,7 @@ function ArchitectureInterviewApp() {
         </section>
 
         <section id="question-bank" className="architect-section question-section">
-          <header><span>05 / SEVENTEEN RECALL PROMPTS</span><h2>Start with the branch.<br/>Not the buzzword.</h2><p>Cover the answer, speak for 45 seconds, then reveal the first move. Score one point for each BETRV element you make explicit; target six of six.</p></header>
+          <header><span>05 / SEVENTEEN RECALL PROMPTS</span><h2>Start with the branch.<br/>Not the buzzword.</h2><p>Cover the answer, speak for 45 seconds, then reveal the first move. Score one point for each BEOTRV element you make explicit; target six of six.</p></header>
           <a className="question-reader-link" href="./discussion-architecture-interview-qa.html"><span>FULL READING ROOM</span><b>Continue with 50 principal-level questions, layered answers, proof gates and memory lines.</b><i>Open 50 Q&amp;A →</i></a>
           <ol className="question-grid">{principalPrompts.map(([question, firstMove], index) => <li key={question}><span>{String(index + 1).padStart(2, "0")}</span><h3>{question}</h3><details><summary>Reveal first move</summary><p>{firstMove}</p></details></li>)}</ol>
         </section>

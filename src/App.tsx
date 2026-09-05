@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { parseReadingProgress } from "./reading-progress";
 
 type CommandProps = { code: string; label?: string; shell?: "PowerShell" | "Ubuntu" };
 type Theme = "dark" | "light";
@@ -419,8 +420,10 @@ const debugLayers = [
 
 function Command({ code, label, shell = "Ubuntu" }: CommandProps) {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   async function copy() {
-    await navigator.clipboard.writeText(code);
+    setCopyError(false);
+    try { await navigator.clipboard.writeText(code); } catch { setCopyError(true); return; }
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1400);
   }
@@ -433,6 +436,7 @@ function Command({ code, label, shell = "Ubuntu" }: CommandProps) {
         </button>
       </div>
       <pre><code>{code}</code></pre>
+      {copyError && <p role="status">Clipboard access was blocked. Select the command above to copy it manually.</p>}
     </div>
   );
 }
@@ -493,7 +497,7 @@ function SequenceDiagram({ title, actors, events }: { title: string; actors: rea
 
 function App() {
   const [done, setDone] = useState<Record<string, boolean>>(() => {
-    try { return JSON.parse(localStorage.getItem("ttsim-progress") ?? "{}"); } catch { return {}; }
+    try { return parseReadingProgress(localStorage.getItem("ttsim-progress")); } catch { return {}; }
   });
   const [activeLab, setActiveLab] = useState(0);
   const [activeDebugLayer, setActiveDebugLayer] = useState(0);
@@ -506,10 +510,12 @@ function App() {
   const [readingProgress, setReadingProgress] = useState(0);
   const [theme, setTheme] = useState<Theme>(() => document.documentElement.dataset.theme === "light" ? "light" : "dark");
 
-  useEffect(() => localStorage.setItem("ttsim-progress", JSON.stringify(done)), [done]);
+  useEffect(() => {
+    try { localStorage.setItem("ttsim-progress", JSON.stringify(done)); } catch { /* Reading remains usable when storage is unavailable. */ }
+  }, [done]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("ttsim-theme", theme);
+    try { localStorage.setItem("ttsim-theme", theme); } catch { /* The selected theme still applies to this page. */ }
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#07110f" : "#f7f3e8");
   }, [theme]);
   useEffect(() => {
@@ -843,7 +849,7 @@ function App() {
 
           <div className="capstone-download"><div><p className="eyebrow">Repeat the complete study</p><h3>Commands, exit gates, fixtures and portfolio checklist.</h3></div><a href="./COMPILER_RUNTIME_CAPSTONE.md">Open the standalone capstone guide ↗</a></div>
 
-          <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://github.com/tenstorrent/tt-metal/blob/main/METALIUM_GUIDE.md">Metalium guide ↗</a><a href="https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/examples/dram_loopback.html">DRAM loopback ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/overview.html">TT-MLIR architecture ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/tools.html">ttmlir-opt tools ↗</a><a href="https://mlir.llvm.org/docs/PatternRewriter/">MLIR rewriting ↗</a></div></div>
+          <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/METALIUM_GUIDE.md">Metalium guide ↗</a><a href="https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/examples/dram_loopback.html">DRAM loopback ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/overview.html">TT-MLIR architecture ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/tools.html">ttmlir-opt tools ↗</a><a href="https://mlir.llvm.org/docs/PatternRewriter/">MLIR rewriting ↗</a></div></div>
         </section>
 
         <section id="contribute" className="content-section contribution-section">
@@ -877,7 +883,7 @@ function App() {
             {contributionLanes.map((lane) => <div className="lane-row" role="row" key={lane.project}><strong role="cell">{lane.project}</strong><span role="cell">{lane.access}</span><span role="cell">{lane.hardware}</span><b role="cell">{lane.role}</b><p role="cell">{lane.detail}</p></div>)}
           </div>
 
-          <div className="bounty-guardrail"><span>BOUNTY GUARDRAIL</span><div><h3>AI agents must not claim bounties.</h3><p>Tenstorrent permits reviewed offline AI assistance, but the human contributor must manually request assignment, understand the code and take responsibility. A payout requires assignment plus a merged PR for an issue carrying both bounty and difficulty labels. Never start an already assigned issue expecting payment.</p><div><a href="https://docs.tenstorrent.com/bounty_terms.html">Read the terms ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/main/CONTRIBUTING.md#bug-bounty-program---ai-tool-restrictions">Read the AI restriction ↗</a><a href="https://github.com/tenstorrent/tt-metal/issues?q=is%3Aissue%20state%3Aopen%20label%3Abounty%20no%3Aassignee">Check unassigned bounties ↗</a></div></div></div>
+          <div className="bounty-guardrail"><span>BOUNTY GUARDRAIL</span><div><h3>AI agents must not claim bounties.</h3><p>Tenstorrent permits reviewed offline AI assistance, but the human contributor must manually request assignment, understand the code and take responsibility. A payout requires assignment plus a merged PR for an issue carrying both bounty and difficulty labels. Never start an already assigned issue expecting payment.</p><div><a href="https://docs.tenstorrent.com/bounty_terms.html">Read the terms ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/CONTRIBUTING.md#bug-bounty-program---ai-tool-restrictions">Read the AI restriction ↗</a><a href="https://github.com/tenstorrent/tt-metal/issues?q=is%3Aissue%20state%3Aopen%20label%3Abounty%20no%3Aassignee">Check unassigned bounties ↗</a></div></div></div>
 
           <div className="contribution-phases" aria-label="Twelve-week contribution plan">
             {contributionPhases.map((phase) => <article key={phase.range}><span>{phase.range}</span><h3>{phase.title}</h3><p>{phase.body}</p></article>)}
@@ -885,7 +891,7 @@ function App() {
 
           <div className="contribution-verdict"><p className="eyebrow">The target identity</p><h3>Compiler/runtime engineer—not only kernel author, not only model porter.</h3><p>Build the kernel foundation deeply enough to explain the machine, then connect it to the compiler decisions that create the program. Model bring-up becomes the later integration proof.</p></div>
 
-          <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://github.com/tenstorrent/ttsim">ttsim boundary ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/main/CONTRIBUTING.md">TT-Metal contributing ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/overview.html">TT-MLIR dialect flow ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/builder/ttir-builder.html">TTIR builder targets ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/ttrt.html">ttrt runtime ↗</a><a href="https://github.com/tenstorrent/tt-emule">tt-emule ↗</a><a href="https://docs.tenstorrent.com/bounty_terms.html">Bounty terms ↗</a></div></div>
+          <div className="architecture-sources"><span>Primary evidence</span><div><a href="https://github.com/tenstorrent/ttsim">ttsim boundary ↗</a><a href="https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/CONTRIBUTING.md">TT-Metal contributing ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/overview.html">TT-MLIR dialect flow ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/builder/ttir-builder.html">TTIR builder targets ↗</a><a href="https://docs.tenstorrent.com/tt-mlir/ttrt.html">ttrt runtime ↗</a><a href="https://github.com/tenstorrent/tt-emule">tt-emule ↗</a><a href="https://docs.tenstorrent.com/bounty_terms.html">Bounty terms ↗</a></div></div>
         </section>
 
         <section id="debug" className="content-section debug-section">

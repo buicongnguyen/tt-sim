@@ -274,7 +274,7 @@ directly to matmul merely because the MLIR graph contains one.
 
 ## Primary references
 
-- [TT Architecture and Metalium Guide](https://github.com/tenstorrent/tt-metal/blob/main/METALIUM_GUIDE.md)
+- [TT Architecture and Metalium Guide](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/METALIUM_GUIDE.md)
 - [Metalium DRAM loopback](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/tt_metal/examples/dram_loopback.html)
 - [Metalium getting started: reader, compute, writer and circular buffers](https://docs.tenstorrent.com/tt-metal/latest/tt-metalium/get_started/get_started.html)
 - [TT-MLIR architecture and dialect overview](https://docs.tenstorrent.com/tt-mlir/overview.html)

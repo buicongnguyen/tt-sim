@@ -243,16 +243,17 @@ ordinary BF16/BFP matmul uses fewer standard MVMUL issues. See
 Huawei exposes an asynchronous pipeline, but at a different software boundary:
 
 ```text
-GM / HBM
-  ↓ MTE2 copy-in
-L1 or Unified Buffer
-  ↓ MTE1 / queue event
-L0A + L0B → Cube → L0C
-  ↓ FixPipe or Vector
-VECOUT / UB
-  ↓ MTE3 or FixPipe copy-out
-GM / HBM
+Separated AIC: GM → MTE2 → L1 → MTE1 → L0A/L0B → Cube → L0C
+                                                        ↓ FixPipe
+                                                       GM / L1
+Separated AIV: GM → MTE2 → UB → Vector → UB → MTE3 → GM
 ```
+
+This is the separated AIC/AIV architecture described in the
+[CANN 8.0 hardware guide](https://www.hiascend.com/document/detail/en/canncommercial/800/opdevg/Ascendcopdevg/atlas_ascendc_10_0008.html).
+AIC/AIV exchange uses GM in that guide. Do not assume a direct FixPipe-to-UB
+path or apply this diagram to the original coupled Ascend 910. Queue events
+order transfers; they are not transfer engines themselves.
 
 | Tenstorrent concept | Huawei Ascend concept | Important difference |
 |---|---|---|

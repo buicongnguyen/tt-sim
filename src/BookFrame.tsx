@@ -125,9 +125,14 @@ function BookFrame({ children }: { children: ReactNode }) {
       setActiveSection(nextSection);
     };
     update();
+    // Filters, expanded answers and rendered diagrams change document height
+    // without a scroll or viewport resize.
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(document.getElementById("book-page-content")!);
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
     return () => {
+      resizeObserver.disconnect();
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
@@ -153,7 +158,7 @@ function BookFrame({ children }: { children: ReactNode }) {
       <button className="book-frame-scrim" type="button" aria-label="Close table of contents" onClick={() => setOpen(false)} />
       <aside className="book-rail" id="book-rail" aria-label="TT-SIM book contents" aria-hidden={sidebarHidden} inert={sidebarHidden}>
         <header className="book-rail-head"><a href="./index.html"><span>TT•SIM</span><strong>Accelerator field book</strong></a><p>Architecture → software → evidence</p></header>
-        <section className="book-rail-current" aria-label="Current chapter"><small>CHAPTER {current.number}</small><strong>{current.title}</strong><p>{current.note}</p></section>
+        <section className="book-rail-current" aria-label="Current chapter"><small>CHAPTER {current.number}</small><strong>{current.title}</strong><p>{current.note}</p><a href="./INTERVIEW_SOURCE_REVIEW.md">Interview source review ↗</a></section>
         <div className="book-rail-progress" aria-label={`${progress}% of chapter read`}><div><span>Reading progress</span><strong>{progress}%</strong></div><div><i style={{ width: `${progress}%` }} /></div></div>
         <nav className="book-rail-chapters" aria-label="Book chapters">
           {bookGroups.map((group) => <section key={group.label}><h2>{group.label}</h2>{group.chapters.map((chapter) => {
@@ -164,7 +169,7 @@ function BookFrame({ children }: { children: ReactNode }) {
         {current.sections.length > 0 && <nav className="book-rail-outline" aria-label="On this page"><h2>On this page</h2>{current.sections.map((section) => <a className={activeSection === section.id ? "active" : ""} aria-current={activeSection === section.id ? "location" : undefined} href={`#${section.id}`} key={section.id} onClick={() => setOpen(false)}>{section.title}</a>)}</nav>}
         <nav className="book-rail-pager" aria-label="Adjacent chapters">{previous && <a href={previous.href}><span>← Previous</span><strong>{previous.title}</strong></a>}{next && <a className="next" href={next.href}><span>Next →</span><strong>{next.title}</strong></a>}</nav>
       </aside>
-      <div className="book-frame-content" id="book-page-content">{children}</div>
+      <div className="book-frame-content" id="book-page-content" tabIndex={-1}>{children}</div>
     </div>
   );
 }

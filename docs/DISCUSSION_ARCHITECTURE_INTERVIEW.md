@@ -9,6 +9,10 @@ Interactive page:
 TT-Metal source baseline:
 [`50a82f835593512c4176546b4af68d7e91315a86`](https://github.com/tenstorrent/tt-metal/tree/50a82f835593512c4176546b4af68d7e91315a86)
 
+Read the [5 September source review](INTERVIEW_SOURCE_REVIEW.md) before rehearsal.
+It maps key claims to code and distinguishes proposals, implementation facts,
+product specifications and personal résumé evidence.
+
 This guide turns the thirteen preparation topics into a principal-level study
 plan, then expands six architecture trade-off questions in depth. The original
 answers are useful openings, but a senior answer needs two additional pieces:
@@ -16,7 +20,7 @@ answers are useful openings, but a senior answer needs two additional pieces:
 1. **Evidence:** how the proposed bottleneck will be proved.
 2. **Validation:** what must improve, and what must not regress.
 
-The resulting answer structure is **BETRV**:
+The resulting answer structure is **BEOTRV**:
 
 | Step | Meaning | Interview sentence |
 |---|---|---|
@@ -45,7 +49,7 @@ to reconstruct the longer answer under pressure.
 | 8 | Huawei CANN + MindSpore ★★★☆☆ | Framework, graph/compiler, operator, Ascend C tiling/kernel, runtime stream and hardware boundaries | Walk one operator from semantics and tiling through compile, run, profile and optimize | Current official documentation; no unmeasured Ascend performance claim | Map the stack; run one operator; profile the real boundary |
 | 9 | Performance analysis ★★★★★ | Host, dispatch, compute, memory, NoC/collectives, synchronization, allocation and tail costs | Diagnose “the model is slow” without naming an optimization first | Warm baseline, pinned workload, profiler artifacts, repeated result, correctness and rollback gate | Measure → localize → change one mechanism → prove |
 | 10 | Owned projects ★★★★★ | Bos NPU, PIE CUDA/DMA, Cadence routing and Samsung production vision | Prepare a 45-second opening and five-minute drill-down for each | Four model families; real-time acquisition beyond C#; 80% routing reduction; shipped vision metrics | Problem → evidence → decision → outcome → boundary |
-| 11 | Principal question bank ★★★★★ | The seventeen prompts on the interactive page | Answer each in 45 seconds, then take two follow-ups for three minutes | Score all six BETRV elements; remove claims without metric, constraint or ownership | Make a falsifiable decision under constraints |
+| 11 | Principal question bank ★★★★★ | The seventeen prompts on the interactive page | Answer each in 45 seconds, then take two follow-ups for three minutes | Score all six BEOTRV elements; remove claims without metric, constraint or ownership | Make a falsifiable decision under constraints |
 | 12 | Simulator vs hardware ★★★☆☆ | Correctness/sequence/resource-accounting claims versus timing, power, thermals and contention | Give a two-gate plan: simulator shortlist, hardware acceptance test | Pinned simulator/TT-Metal revisions, golden and negative tests, later named hardware metrics | Simulate to shortlist; measure hardware to claim performance |
 | 13 | Scope and restraint ★★☆☆☆ | Purpose of CANN/MindSpore/compiler stages; defer obscure APIs, ISA and unverified chip detail | Practice: “I have not measured that; here is the experiment that changes my decision” | One-page recall sheet, spoken answers and adequate rest | Know the boundary; show the method; do not bluff |
 
@@ -61,7 +65,7 @@ to reconstruct the longer answer under pressure.
    rehearse one custom-operator bring-up without claiming hands-on results.
 5. **90 minutes — pressure practice:** six deep cases plus all seventeen prompts;
    record the 45-second opening and one three-minute drill-down.
-6. **30 minutes — recall sheet:** BETRV, six formulas, four outcomes, three
+6. **30 minutes — recall sheet:** BEOTRV, six formulas, four outcomes, three
    evidence boundaries and a first-30-days Huawei learning plan.
 
 Supporting candidate evidence:
@@ -290,7 +294,7 @@ instead of the sequential sum. Fill/drain, tail work and synchronization remain.
 
 On TT-Metal, the important contracts are:
 
-- [`cb_reserve_back`, `cb_push_back`, `cb_wait_front`, `cb_pop_front`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/dataflow/dataflow_api.h#L832-L1223)
+- [`cb_reserve_back`, `cb_push_back`, `cb_wait_front`, `cb_pop_front`](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/dataflow/dataflow_api.h#L195-L485)
   express buffer ownership;
 - [typed NoC barriers](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/dataflow/dataflow_api.h#L1743-L1917)
   express transfer completion;
@@ -427,7 +431,7 @@ These are not one generic “8-bit format”:
 | FP8 E4M3 | Per-value exponent with more mantissa than E5M2 | Exact hardware/operator support required |
 | FP8 E5M2 | More exponent range, less mantissa precision | Often more useful where range dominates precision |
 | INT8 | Integer value plus tensor/channel/group scale; optional zero point | Calibration and scale granularity define error |
-| Tenstorrent `BFLOAT8_B` | Block values share exponent metadata | It is Block Float 8, not IEEE FP8 |
+| Tenstorrent `BFLOAT8_B` | Block values share exponent metadata | It is Block Float 8, not scalar FP8 |
 
 ### 45-second answer
 
@@ -534,7 +538,7 @@ Asynchronous issue alone does not create overlap. Overlap needs:
 
 TT-Metal rule: **issue broadly, wait narrowly, publish only completed data, and
 reuse only returned storage**. See the [typed NoC waits](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/dataflow/dataflow_api.h#L1743-L1917)
-and [circular-buffer API](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/dataflow/dataflow_api.h#L832-L1223).
+and [circular-buffer API](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/hw/inc/api/dataflow/dataflow_api.h#L195-L485).
 
 The SDPA decode implementation provides a real reader/compute/writer study:
 [reader](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/ttnn/cpp/ttnn/operations/transformer/sdpa_decode/device/kernels/dataflow/reader_decode_all.cpp),

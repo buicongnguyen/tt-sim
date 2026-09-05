@@ -1,7 +1,5 @@
 # Verified Blackhole smoke test on WSL2
 
-This is the web-accessible copy of the [complete repository test record](https://github.com/buicongnguyen/tt-sim/blob/main/docs/BLACKHOLE_SMOKE_TEST.md).
-
 - **Result:** PASS
 - **Observed:** 16 August 2026
 - **Host:** WSL2, Ubuntu 22.04.5 LTS, x86_64
@@ -9,16 +7,18 @@ This is the web-accessible copy of the [complete repository test record](https:/
 - **UMD:** `9bbe7bc9`
 - **Simulator:** `libttsim_bh.so`
 - **Architecture:** Blackhole, device ID `0xb140`
-- **SoC descriptor:** exact match with `tt_metal/soc_descriptors/blackhole_140_arch.yaml`
+- **SoC descriptor:** byte-for-byte match with `tt_metal/soc_descriptors/blackhole_140_arch.yaml`
 
 ## Reproduce
 
 ```bash
 cp "$TT_METAL_HOME/tt_metal/soc_descriptors/blackhole_140_arch.yaml" ~/sim/soc_descriptor.yaml
+
 export TT_METAL_SIMULATOR="$HOME/sim/libttsim_bh.so"
 export TT_METAL_SLOW_DISPATCH_MODE=1
 export TT_METAL_DISABLE_SFPLOADMACRO=1
-export TT_METAL_DPRINT_CORES=0,0  # optional
+export TT_METAL_DPRINT_CORES=0,0  # optional: show kernel-side output
+
 cd "$TT_METAL_HOME"
 ./build/programming_examples/metal_example_add_2_integers_in_riscv
 ```
@@ -43,11 +43,13 @@ Closing devices in cluster completed.
 | --- | --- | --- |
 | `device_id=0xb140` | PASS | TT-Metal loaded and identified the virtual Blackhole device. |
 | Multi-ERISC disabled | EXPECTED | The simulator intentionally disables Blackhole dual Ethernet-RISC mode. |
-| `Board unknown ... mask indicates 2` | BENIGN | UMD has no physical board identity for the simulator; the descriptor is correct. |
+| `Board unknown ... mask indicates 2` | BENIGN | UMD has no physical board identity for the simulator. The selected descriptor was verified as correct. |
 | SMC telemetry unavailable | EXPECTED | `ttsim` has no physical firmware provider or SMC telemetry buffer. |
 | `Success: Result is 21` | PASS | Host dispatch, JIT compilation, BRISC execution and result transfer completed correctly. |
-| `0/9` JIT cache hits | INFO | This first run compiled nine artifacts. |
+| `0/9` JIT cache hits | INFO | This first run compiled nine artifacts. A repeated identical run may reuse cached artifacts. |
 | `24.6 KHz` | INFO | Simulator throughput, not Blackhole silicon performance. |
+
+The warning about `TT_METAL_DPRINT_CORES` is optional guidance emitted by the example when kernel-side printing is not selected. It does not change the pass/fail result.
 
 ## Verdict
 
@@ -65,7 +67,7 @@ WARNINGS: Expected simulator limitations
 ## Primary references
 
 - [Tenstorrent ttsim](https://github.com/tenstorrent/ttsim)
-- [RISC-V addition example](https://github.com/tenstorrent/tt-metal/blob/main/tt_metal/programming_examples/add_2_integers_in_riscv/add_2_integers_in_riscv.cpp)
-- [Simulator runtime options](https://github.com/tenstorrent/tt-metal/blob/main/tt_metal/llrt/rtoptions.cpp)
-- [Dispatch telemetry fallback](https://github.com/tenstorrent/tt-metal/blob/main/tt_metal/impl/dispatch/dispatch_telemetry.cpp)
-- [UMD harvesting validation](https://github.com/tenstorrent/tt-metal/blob/main/tt_metal/third_party/umd/device/cluster_descriptor.cpp)
+- [RISC-V addition example](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/programming_examples/add_2_integers_in_riscv/add_2_integers_in_riscv.cpp)
+- [Simulator runtime options](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/llrt/rtoptions.cpp)
+- [Dispatch telemetry fallback](https://github.com/tenstorrent/tt-metal/blob/50a82f835593512c4176546b4af68d7e91315a86/tt_metal/impl/dispatch/dispatch_telemetry.cpp)
+- [UMD harvesting validation at the recorded UMD revision](https://github.com/tenstorrent/tt-umd/blob/9bbe7bc93544029aadaa2b2bcbf39e774fa77f9a/device/cluster_descriptor.cpp)

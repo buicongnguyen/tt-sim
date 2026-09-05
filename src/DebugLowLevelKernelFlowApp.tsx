@@ -48,7 +48,7 @@ const diagrams: readonly Diagram[] = [
     CQ->>CQ: Enter prefetch and dispatch loops`,
     sources: [
       { label: "Firmware build states", href: `${ttMetal}/tt_metal/jit_build/build.cpp#L628-L790` },
-      { label: "Host firmware load", href: `${ttMetal}/tt_metal/impl/context/risc_firmware_initializer.cpp#L1053-L1199` },
+      { label: "Host firmware load", href: `${ttMetal}/tt_metal/impl/device/firmware/risc_firmware_initializer.cpp#L1053-L1199` },
       { label: "BRISC subordinate initialization", href: `${ttMetal}/tt_metal/hw/firmware/src/tt-1xx/brisc.cc#L181-L275` },
     ],
   },
