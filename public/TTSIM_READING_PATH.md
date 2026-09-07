@@ -1,6 +1,37 @@
 # ttsim documentation reading path
 
-Use this list after the first `Success: Result is 21` smoke test. It favors small experiments and first-party Tenstorrent material over reading every document front to back.
+Start with the [six simulator interview answers](./index.html#simulator-interview),
+then use this reading path to connect each explanation to an experiment and its
+source. The `Success: Result is 21` smoke test is one useful starting point; it
+does not establish tensor-kernel correctness or hardware performance.
+
+## Interview answer: how would you learn and validate an unfamiliar simulator?
+
+**Short answer:** I would first identify its supported execution contract, then
+run a small known example and check the result independently. I would add one
+controlled change at a time and record exactly what each test establishes.
+
+1. **Purpose.** Separate the simulator, the runtime that drives it, and this
+   repository's study material. They are different artifacts with different
+   responsibilities.
+2. **Baseline.** Record the simulator version, TT-Metal revision, architecture
+   descriptor, command and input. A reproducible baseline makes later failures
+   easier to attribute.
+3. **Mechanism.** Trace the input through arguments, memory movement, execution
+   and result verification. Explain the contract at each boundary rather than
+   memorizing function names alone.
+4. **Controlled test.** Change one supported input or implementation choice.
+   Compare with a reference and investigate the first mismatch. Check whether
+   an exit reports unsupported behavior before blaming application code.
+5. **Evidence boundary.** A passing test supports the tested case within the
+   model. It does not prove complete hardware correctness, timing-sensitive
+   behavior, sustained bandwidth or power. Define the later device test needed
+   for each deployment claim.
+
+**Remember:** contract → baseline → mechanism → test → boundary.
+
+**Huawei follow-up:** transfer this method to a named Ascend target and CANN
+version. Do not describe Tenstorrent simulator behavior as an Ascend result.
 
 For mechanism-by-mechanism debugging, use [`TTSIM_DEBUGGING_PATH.md`](./TTSIM_DEBUGGING_PATH.md).
 
@@ -55,4 +86,8 @@ The [ttsim QEMU Bridge lesson](https://docs.tenstorrent.com/tt-vscode-toolkit/le
 6. Explain the difference using one architecture reference.
 7. Commit the note with exact version information.
 
-This index was verified against public upstream material on 2026-08-12. Prefer the upstream documents whenever behavior changes.
+The original link inventory was checked on 2026-08-12. The interview framing was
+revised on 2026-09-06; no new simulator execution is implied. The upstream README,
+library API and unsupported-functionality documents were consulted for that
+revision. Links to `main` or `latest` are moving references: record a source
+commit for a reproducible experiment and recheck version-specific behavior.

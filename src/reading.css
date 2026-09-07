@@ -1,0 +1,22 @@
+/* Reading-first scale shared by the home guide and every book chapter.
+   Keep rem units so browser font preferences and zoom remain effective. */
+#root { font-size:1.125rem; }
+#root :where(p,li,dd,td,th,blockquote):not(:where(.mermaid,.mermaid *)) { font-size:1.125rem!important; line-height:1.7!important; }
+#root :where(div,span,a,b,strong,em,i,button,label,summary,small,dt,input,select,textarea):not(:where(.mermaid,.mermaid *)) { font-size:max(1rem,1em)!important; line-height:1.5; }
+#root :where(h1) { font-size:clamp(2rem,3vw,2.5rem)!important; line-height:1.2!important; letter-spacing:-.025em!important; }
+#root :where(h2) { font-size:clamp(1.65rem,2.5vw,2rem)!important; line-height:1.25!important; letter-spacing:-.02em!important; }
+#root :where(h3) { font-size:1.375rem!important; line-height:1.35!important; letter-spacing:normal!important; }
+#root :where(code,pre) { font-size:1rem!important; line-height:1.6!important; }
+#root :where(p,li,td,dd) :where(strong,b) { font-weight:800; }
+#root :where(li) + li { margin-top:.65rem; }
+#root :where(pre) { overflow-x:auto; }
+#root :where(header nav) { flex-wrap:wrap; gap:.75rem; }
+#root :where(header[class*="topbar"],.topbar) { height:auto; min-height:4.5rem; padding-top:.75rem; padding-bottom:.75rem; }
+#root :where(.hero,.hwa-hero,.qa-hero) { min-height:0; }
+.interview-primer { padding:2rem clamp(1rem,4vw,4rem); }
+.interview-primer > article { max-width:78ch; padding:1.5rem 0; border-bottom:1px solid currentColor; }
+.interview-primer ol { padding-left:1.6rem; }
+.interview-primer a { text-decoration:underline; text-underline-offset:3px; }
+.interview-primer .recall { margin-top:1rem; }
+.qa-answer .answer-steps { padding-left:1.5rem; margin:.75rem 0; }
+@media(max-width:980px) { #root :where(header nav) { gap:.65rem; } }

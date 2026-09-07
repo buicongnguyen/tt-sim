@@ -45,7 +45,7 @@ Closing devices in cluster completed.
 | Multi-ERISC disabled | EXPECTED | The simulator intentionally disables Blackhole dual Ethernet-RISC mode. |
 | `Board unknown ... mask indicates 2` | BENIGN | UMD has no physical board identity for the simulator. The selected descriptor was verified as correct. |
 | SMC telemetry unavailable | EXPECTED | `ttsim` has no physical firmware provider or SMC telemetry buffer. |
-| `Success: Result is 21` | PASS | Host dispatch, JIT compilation, BRISC execution and result transfer completed correctly. |
+| `Success: Result is 21` | PASS | The integer-add example returned the expected result through the tested execution path. This does not independently validate every runtime stage, a Tensix matrix kernel, or model accuracy. |
 | `0/9` JIT cache hits | INFO | This first run compiled nine artifacts. A repeated identical run may reuse cached artifacts. |
 | `24.6 KHz` | INFO | Simulator throughput, not Blackhole silicon performance. |
 

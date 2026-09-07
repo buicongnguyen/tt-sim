@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { parseReadingProgress } from "./reading-progress";
+import TTSimInterviewPrimer from "./TTSimInterviewPrimer";
 
 type CommandProps = { code: string; label?: string; shell?: "PowerShell" | "Ubuntu" };
 type Theme = "dark" | "light";
@@ -18,6 +19,7 @@ const chapterGroups = [
     label: "Orientation",
     chapters: [
       { id: "top", number: "00", title: "Cover & execution path", note: "Start here" },
+      { id: "simulator-interview", number: "00A", title: "Six simulator answers", note: "Explain, verify, remember" },
       { id: "machine", number: "01", title: "Machine audit", note: "Check the runway" },
     ],
   },
@@ -57,7 +59,7 @@ const blackholeSignals = [
   { kind: "expected", label: "EXPECTED", signal: "Disabling multi-erisc mode with simulator/emule target device", meaning: "The simulator intentionally uses one Ethernet RISC instead of Blackhole dual-ERISC mode." },
   { kind: "benign", label: "BENIGN", signal: "Board unknown expects 0 units … mask indicates 2 units", meaning: "UMD cannot assign a physical board type to the simulated chip; the selected Blackhole descriptor is still correct." },
   { kind: "expected", label: "EXPECTED", signal: "Dispatch telemetry SMC buffer unavailable", meaning: "A simulator has no physical firmware information provider or SMC telemetry buffer." },
-  { kind: "pass", label: "PASS", signal: "Success: Result is 21", meaning: "Host dispatch, JIT compilation, BRISC execution and the returned value all passed." },
+  { kind: "pass", label: "PASS", signal: "Success: Result is 21", meaning: "The integer-add example returned the expected value through the tested execution path. This is not a matrix-kernel or model-accuracy test." },
   { kind: "info", label: "INFO", signal: "JIT cache stats: 0/9 hits", meaning: "The first run compiled nine artifacts. Later identical runs may reuse the cache." },
   { kind: "info", label: "INFO", signal: "[6669] 0.3 seconds (24.6 KHz)", meaning: "Simulator throughput only—never interpret it as Blackhole silicon performance." },
 ] as const;
@@ -528,13 +530,16 @@ function App() {
     sections.forEach((section) => observer.observe(section));
     const updateProgress = () => {
       const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-      setReadingProgress(scrollable > 0 ? Math.min(100, Math.max(0, Math.round((window.scrollY / scrollable) * 100))) : 0);
+      setReadingProgress(scrollable > 0 ? Math.min(100, Math.max(0, Math.round((window.scrollY / scrollable) * 100))) : 100);
     };
     updateProgress();
+    const contentResize = new ResizeObserver(updateProgress);
+    contentResize.observe(document.querySelector('main')!);
     window.addEventListener("scroll", updateProgress, { passive: true });
     window.addEventListener("resize", updateProgress);
     return () => {
       observer.disconnect();
+      contentResize.disconnect();
       window.removeEventListener("scroll", updateProgress);
       window.removeEventListener("resize", updateProgress);
     };
@@ -582,8 +587,8 @@ function App() {
         <section id="top" className="hero section-grid">
           <div className="hero-copy">
             <p className="eyebrow"><span>Field guide 001</span><span>Updated 16 Aug 2026</span></p>
-            <h1>Build a chip lab.<br/><em>Skip the chip.</em></h1>
-            <p className="lede">A machine-specific path from Windows to your first Tenstorrent kernel—using the official <code>ttsim</code>, Ubuntu 22.04 on WSL2, and no accelerator hardware.</p>
+            <h1>Understand TT-SIM.<br/><em>Explain the execution path.</em></h1>
+            <p className="lede">Use <strong>small, reproducible tests</strong> to study Tenstorrent kernel execution without an accelerator. Start with the interview answers, then follow the recorded WSL2 setup and experiments. Keep <strong>functional evidence</strong> separate from hardware performance.</p>
             <div className="hero-actions"><a className="button primary" href="#setup">Start the setup</a><a className="button secondary" href="#experiments">See the labs</a></div>
             <div className="hero-meta"><span>6 warm-ups + 8-stage capstone</span><span>~60–90 min setup</span><span>Hardware: none</span></div>
           </div>
@@ -600,6 +605,8 @@ function App() {
           </div>
         </section>
 
+        <TTSimInterviewPrimer />
+
         <section className="clarifier band">
           <span className="band-number">00</span>
           <div><p className="eyebrow">Name collision, resolved</p><h2>This guide uses <code>tenstorrent/ttsim</code>.</h2></div>
@@ -607,7 +614,7 @@ function App() {
         </section>
 
         <section id="machine" className="content-section">
-          <div className="section-heading"><span>01 / Machine audit</span><h2>Your WSL runway is already here.</h2><p>Read-only checks on this PC found a capable base. The missing compiler tools are expected and are installed during setup.</p></div>
+          <div className="section-heading"><span>01 / Machine audit</span><h2>Check the environment before running.</h2><p>These are <strong>historical observations from the recorded setup</strong>, not a live machine audit. Recheck the distro, memory, disk and toolchain on your machine before following the commands.</p></div>
           <div className="machine-grid">
             <article><small>Distro</small><strong>Ubuntu 22.04.5 LTS</strong><span className="status good">installed</span></article>
             <article><small>Virtualization</small><strong>WSL2 · x86_64</strong><span className="status good">correct target</span></article>
@@ -616,7 +623,7 @@ function App() {
             <article><small>WSL disk</small><strong>942 GiB free</strong><span className="status good">ample headroom</span></article>
             <article><small>Toolchain</small><strong>TT-Metal built</strong><span className="status good">Blackhole smoke test passed</span></article>
           </div>
-          <div className="note machine-note"><b>One Windows fix:</b> Docker Desktop is currently the default WSL distro. Make Ubuntu the default so plain <code>wsl</code> opens the lab environment.</div>
+          <div className="note machine-note"><b>Optional Windows configuration:</b> If Docker Desktop is your default WSL distro, select Ubuntu explicitly or make it the default. Check with <code>wsl --list --verbose</code> before changing the setting.</div>
           <Command shell="PowerShell" code="wsl --set-default Ubuntu-22.04\nwsl -d Ubuntu-22.04" />
         </section>
 

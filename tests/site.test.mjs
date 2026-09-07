@@ -5,6 +5,21 @@ import test from "node:test";
 
 const root = new URL("../dist/", import.meta.url);
 
+test("shares a readable scale and structured simulator interview explanations", async () => {
+  const styles = await readFile(new URL('../src/reading.css', root), 'utf8');
+  assert.match(styles, /font-size:1\.125rem!important/);
+  assert.match(styles, /font-size:max\(1rem,1em\)!important/);
+  const primer = await readFile(new URL('../src/TTSimInterviewPrimer.tsx', root), 'utf8');
+  assert.equal((primer.match(/question:/g) ?? []).length, 6);
+  assert.match(primer, /<ol>/);
+  assert.match(primer, /<strong>\{keyword\}/);
+  assert.match(primer, /not proof of every hardware feature/);
+  assert.match(primer, /not describe ttsim results as Ascend measurements/);
+  for (const file of ['main.tsx', 'BookFrame.tsx']) {
+    assert.match(await readFile(new URL(`../src/${file}`, root), 'utf8'), /import "\.\/reading.css"/);
+  }
+});
+
 test("recovers invalid saved reading progress without crashing the guide", async () => {
   const source = await readFile(new URL("../src/reading-progress.ts", root), "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
@@ -79,7 +94,7 @@ test("publishes the low-level kernel Mermaid debug flow", async () => {
   const publishedGuide = await readFile(new URL("DEBUG_LOW_LEVEL_KERNEL_FLOW.md", root), "utf8");
   assert.match(html, /Low-level kernel debug flow/);
   assert.match(main, /from "mermaid"/);
-  assert.match(main, /await mermaid\.run/);
+  assert.match(main, /<MermaidDiagrams \/>/);
   assert.match(packageJson, /"mermaid": "11\.17\.0"/);
   assert.match(app, /HOST → FIRMWARE → WRAPPER → KERNEL_MAIN → DONE/);
   assert.match(app, /R WITHOUT K/);
@@ -103,7 +118,7 @@ test("publishes the NPU architecture interview workbench", async () => {
   const publishedGuide = await readFile(new URL("DISCUSSION_ARCHITECTURE_INTERVIEW.md", root), "utf8");
   assert.match(html, /NPU architecture interview workbench/);
   assert.match(main, /from "mermaid"/);
-  assert.match(main, /await mermaid\.run/);
+  assert.match(main, /<MermaidDiagrams \/>/);
   assert.match(app, /Use BEOTRV/);
   assert.match(app, /THIRTEEN-TOPIC PLAN/);
   assert.match(app, /SEVENTEEN RECALL PROMPTS/);

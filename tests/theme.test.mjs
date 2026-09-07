@@ -9,6 +9,14 @@ const source = await readFile(new URL('../scripts/dark-theme.ts', import.meta.ur
 const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
 const { default: darkTheme, darkColor } = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
 
+test('dark color conversion preserves asset URLs and quoted strings', () => {
+  const url = 'url("/images/black.svg#fff")';
+  assert.equal(darkColor(url, 'surface'), url);
+  assert.equal(darkColor("url('/white.svg')", 'surface'), "url('/white.svg')");
+  assert.equal(darkColor('url(/black.svg#fff) white', 'surface'), `url(/black.svg#fff) ${darkColor('white', 'surface')}`);
+  assert.equal(darkColor('"white"', 'text'), '"white"');
+});
+
 test('every published chapter initializes its preference before app scripts', async () => {
   const dist = new URL('../dist/', import.meta.url);
   for (const file of await readdir(dist)) {
@@ -54,6 +62,6 @@ test('all authored chapter styles get dark rules without unresolved color variab
         if (/^(color|background|background-color)$/.test(decl.prop)) assert.ok(!decl.value.includes('var('), `${file}: ${decl.toString()}`);
       });
     });
-    assert.ok(generated > 5, file);
+    if (/#[\da-f]{3,8}\b/i.test(css)) assert.ok(generated > 5, file);
   }
 });

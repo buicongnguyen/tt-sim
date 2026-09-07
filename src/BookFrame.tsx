@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import "./reading.css";
 
 type BookSection = { id: string; title: string };
 type BookChapter = {

@@ -4,7 +4,10 @@ import type { Plugin } from 'postcss';
 // Resolve colors by their *property*, rather than reversing tokens globally.
 // This keeps every existing selector, state and responsive rule in the theme.
 export function darkColor(value: string, role: 'text' | 'surface' | 'border'): string {
-  return value.replace(/#[\da-f]{3,8}\b|rgba?\([^()]+\)|\b(?:white|black)\b/gi, (color) => {
+  // Consume URLs and quoted strings intact before matching color tokens.
+  // Otherwise url('/black.svg#fff') would be rewritten as a broken URL.
+  return value.replace(/url\((?:[^()"']|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')*\)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|#[\da-f]{3,8}\b|rgba?\([^()]+\)|\b(?:white|black)\b/gi, (color) => {
+    if (/^url\(/i.test(color) || color.startsWith('"') || color.startsWith("'")) return color;
     let channels: number[];
     let alpha = 1;
     if (color.startsWith('#')) {

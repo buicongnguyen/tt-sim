@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { qaCategories, qaItems, type QACategory } from "./architecture-interview-qa-data";
+import { matchesQA } from './qa-search';
 
 type CategoryFilter = "All topics" | QACategory;
-
-const normalize = (value: string) => value.trim().toLocaleLowerCase();
 
 function ArchitectureInterviewQAApp() {
   const [category, setCategory] = useState<CategoryFilter>("All topics");
@@ -11,11 +10,9 @@ function ArchitectureInterviewQAApp() {
   const [expanded, setExpanded] = useState<ReadonlySet<number>>(() => new Set([1]));
 
   const filtered = useMemo(() => {
-    const needle = normalize(query);
     return qaItems.filter((item) => {
       const matchesCategory = category === "All topics" || item.category === category;
-      const haystack = `${item.question} ${item.answer} ${item.deeper} ${item.proof} ${item.memory} ${item.category}`.toLocaleLowerCase();
-      return matchesCategory && (!needle || haystack.includes(needle));
+      return matchesCategory && matchesQA(item, query);
     });
   }, [category, query]);
 
@@ -92,8 +89,8 @@ function ArchitectureInterviewQAApp() {
                       <span>{number}</span><div><small>{item.category}</small><h3>{item.question}</h3></div><i>{isOpen ? "CLOSE" : "READ"}</i>
                     </button>
                     <article id={`answer-${number}`} className="qa-answer" hidden={!isOpen}>
-                      <div className="qa-direct"><span>DIRECT ANSWER</span><p>{item.answer}</p></div>
-                      <div className="qa-depth"><span>PRINCIPAL DEPTH</span><p>{item.deeper}</p></div>
+                      <div className="qa-direct"><span>SHORT ANSWER</span><p>{item.answer}</p></div>
+                      <div className="qa-depth"><span>TECHNICAL REASONING</span><p>{item.deeper}</p>{'steps' in item && <ol className="answer-steps">{item.steps.map(step => <li key={step.keyword}><strong>{step.keyword}.</strong> {step.explanation}</li>)}</ol>}</div>
                       <div className="qa-proof"><span>HOW TO PROVE IT</span><p>{item.proof}</p></div>
                       <blockquote><span>MEMORY LINE</span><p>{item.memory}</p></blockquote>
                       <nav aria-label={`Sources for question ${item.id}`}><b>SOURCES</b>{item.sources.map((itemSource) => <a href={itemSource.href} key={itemSource.href}>{itemSource.label} ↗</a>)}</nav>

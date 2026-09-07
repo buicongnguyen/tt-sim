@@ -18,6 +18,7 @@ export type QAItem = {
   question: string;
   answer: string;
   deeper: string;
+  steps?: readonly { keyword: string; explanation: string }[];
   proof: string;
   memory: string;
   sources: readonly QASource[];
@@ -505,8 +506,13 @@ export const qaItems = [
     id: 46,
     category: "Evidence & leadership",
     question: "What can you do if you have only a simulator and no real hardware?",
-    answer: "I use the simulator for functional verification, architectural sequence, API contracts, address and buffer experiments, scheduling comparisons, fault injection, and narrowing candidate designs. I pin simulator and TT-Metal revisions and compare against an independent numerical oracle.",
-    deeper: "I do not claim silicon latency, bandwidth, power, thermals, contention, or system overhead from simulator wall time unless the simulator explicitly provides and validates that model. I predefine the later hardware experiment so simulation produces a shortlist rather than a performance claim.",
+    answer: "I use a simulator to test supported functional behavior and reduce a problem to a reproducible case. With ttsim, I pin the simulator and TT-Metal versions, run a known example, and check its output against an independent reference. A passing test is evidence for that case, not proof that every hardware behavior is covered.",
+    deeper: "I separate functional experiments from performance hypotheses. I can compare correctness and reason about traffic or buffer requirements under explicit assumptions. I do not use ttsim wall time to rank silicon latency, bandwidth or power. Timing-sensitive races and unsupported features require additional validation; instrumentation and fault injection are experiment-specific, not guarantees of built-in support.",
+    steps: [
+      { keyword: "Baseline", explanation: "Record versions, architecture descriptor, input and command; first reproduce the unchanged example." },
+      { keyword: "Controlled change", explanation: "Change one supported behavior, compare the output and identify the first mismatch." },
+      { keyword: "Evidence boundary", explanation: "State what the test covered and which correctness or performance checks remain for hardware." },
+    ],
     proof: "Golden outputs, negative tests, reproducible configuration, resource counts, and an explicit list of measurements deferred to hardware.",
     memory: "Simulate to eliminate bad designs; use hardware to claim performance.",
     sources: [src("Official ttsim repository", source.ttsim), src("TT-Sim lab", "./index.html#experiments")],
@@ -515,10 +521,15 @@ export const qaItems = [
     id: 47,
     category: "Evidence & leadership",
     question: "Why is real hardware still necessary after simulation?",
-    answer: "Real hardware establishes sustained bandwidth, actual latency, queue and runtime overhead, contention, link behavior, power, thermal throttling, clocking, firmware interactions, and system-level variability. These effects can change both the bottleneck and the ranking of simulated designs.",
+    answer: "Hardware testing is necessary because a functional simulator result does not establish production timing, power or system behavior. I measure the same workload on a named device, separating first-use overhead from repeated execution and keeping correctness as an acceptance gate.",
     deeper: "My handoff is a two-gate process: simulator-backed correctness and architectural evidence, then a named device, workload, counters, power method, repeated measurements, and acceptance thresholds. A mismatch is information for calibrating the model, not a reason to hide it.",
-    proof: "Hardware results reproduce functional behavior and either confirm the predicted ranking or explain the model gap with measured evidence.",
-    memory: "Simulation proves the contract; hardware proves the product behavior.",
+    steps: [
+      { keyword: "Match the workload", explanation: "Keep input shapes, precision, software versions and measurement boundaries explicit." },
+      { keyword: "Measure the claim", explanation: "Measure latency or throughput over repeated runs; add power, thermal or contention tests only when those claims are in scope." },
+      { keyword: "Explain differences", explanation: "If hardware contradicts the hypothesis, inspect traces and revise the assumptions rather than hiding the result." },
+    ],
+    proof: "Save raw measurements and numerical checks. A result supports the tested configuration; generalization requires additional workloads and conditions.",
+    memory: "Simulation checks modeled cases; hardware tests deployment claims.",
     sources: [src("Official ttsim repository", source.ttsim), src("Performance method", source.performance)],
   },
   {

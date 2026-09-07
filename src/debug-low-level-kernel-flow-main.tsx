@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import mermaid from "mermaid";
 import DebugLowLevelKernelFlowApp from "./DebugLowLevelKernelFlowApp";
 import BookFrame from "./BookFrame";
+import MermaidDiagrams from "./MermaidDiagrams";
 import "./debug-low-level-kernel-flow.css";
 import "./book-frame.css";
 
@@ -34,22 +35,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BookFrame>
       <DebugLowLevelKernelFlowApp />
+      <MermaidDiagrams />
     </BookFrame>
   </StrictMode>,
 );
-
-const renderDiagrams = async () => {
-  try {
-    await mermaid.run({ querySelector: ".mermaid" });
-    document.documentElement.dataset.mermaid = "ready";
-  } catch (error) {
-    document.documentElement.dataset.mermaid = "failed";
-    console.error("Mermaid rendering failed", error);
-  }
-};
-
-if (document.readyState === "complete") {
-  requestAnimationFrame(() => void renderDiagrams());
-} else {
-  window.addEventListener("load", () => void renderDiagrams(), { once: true });
-}
